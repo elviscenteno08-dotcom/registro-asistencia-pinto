@@ -535,25 +535,34 @@ async function cargar(){
   if (su){
     backend = "sheets";
     try{
-      // JSONP: el navegador permite <script src="...?callback=fn"> sin restricciones CORS
-      const d = await new Promise((resolve, reject) => {
+      // Cargar localStorage primero (respuesta inmediata)
+      const loc = leerLocal("pinto_data");
+      if (loc){ try{ aplicarDatos(JSON.parse(loc)); }catch(e){} }
+      almacenOk = true;
+      // Sincronizar con Sheets en segundo plano via JSONP
+      (function() {
         const cbName = "gs_cb_" + Date.now();
         const tag = document.createElement("script");
-        const timer = setTimeout(() => {
-          tag.remove(); delete window[cbName];
-          reject(new Error("timeout"));
-        }, 12000);
-        window[cbName] = (data) => {
-          clearTimeout(timer); tag.remove(); delete window[cbName];
-          resolve(data);
+        const timer = setTimeout(() => { tag.remove(); try{ delete window[cbName]; }catch(e){} }, 15000);
+        window[cbName] = function(data) {
+          clearTimeout(timer); tag.remove(); try{ delete window[cbName]; }catch(e){}
+          if (data && data.cfg){
+            const local = leerLocal("pinto_data");
+            const localObj = local ? JSON.parse(local) : null;
+            // usar el más reciente comparando bitácoras
+            const remLen = (data.bitacora||[]).length;
+            const locLen = localObj ? (localObj.bitacora||[]).length : 0;
+            if (remLen >= locLen){
+              aplicarDatos(data);
+              escribirLocal("pinto_data", JSON.stringify(data));
+              volcarConfig(); pintarTodo();
+            }
+          }
         };
         tag.src = su + "?callback=" + cbName + "&t=" + Date.now();
-        tag.onerror = () => { clearTimeout(timer); tag.remove(); delete window[cbName]; reject(new Error("error")); };
+        tag.onerror = function(){ clearTimeout(timer); tag.remove(); try{ delete window[cbName]; }catch(e){} };
         document.head.appendChild(tag);
-      });
-      if (d && d.cfg){ aplicarDatos(d); escribirLocal("pinto_data", JSON.stringify(d)); }
-      else { const loc = leerLocal("pinto_data"); if (loc) aplicarDatos(JSON.parse(loc)); }
-      almacenOk = true;
+      })();
     }catch(e){ almacenOk = false; }
     return;
   }
