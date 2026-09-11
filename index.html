@@ -535,22 +535,25 @@ async function cargar(){
   if (su){
     backend = "sheets";
     try{
-      // 1. cargar desde localStorage inmediatamente (sin esperar red)
-      const local = leerLocal("pinto_data");
-      if (local){ try{ aplicarDatos(JSON.parse(local)); }catch(e){} }
-      // 2. intentar sincronizar desde Sheets en segundo plano
+      // JSONP: el navegador permite <script src="...?callback=fn"> sin restricciones CORS
+      const d = await new Promise((resolve, reject) => {
+        const cbName = "gs_cb_" + Date.now();
+        const tag = document.createElement("script");
+        const timer = setTimeout(() => {
+          tag.remove(); delete window[cbName];
+          reject(new Error("timeout"));
+        }, 12000);
+        window[cbName] = (data) => {
+          clearTimeout(timer); tag.remove(); delete window[cbName];
+          resolve(data);
+        };
+        tag.src = su + "?callback=" + cbName + "&t=" + Date.now();
+        tag.onerror = () => { clearTimeout(timer); tag.remove(); delete window[cbName]; reject(new Error("error")); };
+        document.head.appendChild(tag);
+      });
+      if (d && d.cfg){ aplicarDatos(d); escribirLocal("pinto_data", JSON.stringify(d)); }
+      else { const loc = leerLocal("pinto_data"); if (loc) aplicarDatos(JSON.parse(loc)); }
       almacenOk = true;
-      try{
-        const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(su);
-        const res = await fetch(proxyUrl, { cache:"no-store" });
-        if (res.ok){
-          const wrap = await res.json();
-          if (wrap && wrap.contents){
-            const d = JSON.parse(wrap.contents);
-            if (d && d.cfg){ aplicarDatos(d); escribirLocal("pinto_data", JSON.stringify(d)); }
-          }
-        }
-      }catch(e){ /* Sheets no disponible, usamos lo local */ }
     }catch(e){ almacenOk = false; }
     return;
   }
@@ -600,13 +603,11 @@ function guardar(){
     try{
       if (backend === "claude"){ await window.storage.set(KEY, cuerpo, COMPARTIDO); }
       else if (backend === "sheets"){
-        // siempre guardar en localStorage primero (instantáneo)
         escribirLocal("pinto_data", cuerpo);
-        // enviar a Sheets en segundo plano
-        fetch(sheetsUrl(), {
+        const res = await fetch(sheetsUrl(), {
           method:"POST", mode:"no-cors",
           body:cuerpo, headers:{"Content-Type":"text/plain"}
-        }).catch(()=>{});
+        });
       } else {
         const res = await fetch(urlDB(), { method:"PUT", body:cuerpo, headers:{"Content-Type":"application/json"} });
         if (!res.ok) throw new Error("respuesta " + res.status);
