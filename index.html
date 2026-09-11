@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#EE000A">
+<title>Registro de Asistencia · Agencia Pinto</title>
+<style>
+  :root{
+    --rojo:#EE000A; --rojo-suave:#FDE6E6;
+    --verde:#00553C; --verde-osc:#003D2B; --verde-suave:#E2EEE8;
+    --amarillo:#FFCD05; --amarillo-suave:#FFF4CC;
+    --tinta:#111A17; --gris:#6A7A74; --linea:#DCE5E1;
+    --fondo:#F2F5F3; --blanco:#FFFFFF; --plomo:#8A9993; --azul:#3E7EAC;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:#DFE7E3;color:var(--tinta);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:15px;line-height:1.45;display:flex;justify-content:center;
+    -webkit-text-size-adjust:100%;
+  }
+  #app{width:100%;max-width:430px;min-height:100vh;background:var(--fondo);padding-bottom:92px;position:relative;overflow:hidden}
+  @media(min-width:480px){ #app{box-shadow:0 0 44px rgba(0,50,35,.20)} }
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+  .pad{padding:0 14px}
+  svg{display:block}
+
+  /* ---------- marca ---------- */
+  .topbar{background:var(--blanco);padding:13px 14px 12px;display:flex;align-items:center;gap:10px}
+  .rol{
+    margin-left:auto;border:1px solid var(--linea);background:var(--fondo);border-radius:20px;
+    padding:6px 12px;font:inherit;font-size:12px;font-weight:600;color:var(--tinta);cursor:pointer;
+    display:flex;align-items:center;gap:6px;white-space:nowrap;
+  }
+  .rol i{width:7px;height:7px;border-radius:50%;background:var(--plomo);display:block}
+  .rol.admin{border-color:var(--rojo);color:var(--rojo)} .rol.admin i{background:var(--rojo)}
+  .greca{
+    height:9px;background:var(--blanco);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='9' viewBox='0 0 30 9'%3E%3Cpath d='M0 8V5h7V2h8v3h7v3h8' fill='none' stroke='%23EE000A' stroke-width='2'/%3E%3C/svg%3E");
+    background-size:30px 9px;background-repeat:repeat-x;border-bottom:1px solid var(--linea);
+  }
+  .caja-panel{background:var(--verde);color:#fff;padding:14px;margin:12px 14px 4px;border-radius:16px}
+  .caja-panel p{margin:0;font-size:12.5px;opacity:.82}
+  .caja-monto{font-size:36px;font-weight:700;letter-spacing:-.025em;line-height:1.15;margin:1px 0 0!important;opacity:1!important;font-variant-numeric:tabular-nums}
+  .caja-sub{display:flex;gap:16px;margin-top:10px}
+  .caja-sub div{font-size:11.5px;opacity:.85}
+  .caja-sub b{display:block;font-size:14.5px;font-weight:600;font-variant-numeric:tabular-nums}
+  .guardado{position:absolute;top:14px;right:14px;font-size:11px;color:var(--gris)}
+
+  /* ---------- navegación ---------- */
+  nav{
+    position:fixed;bottom:0;z-index:30;width:100%;max-width:430px;background:var(--blanco);
+    border-top:1px solid var(--linea);display:flex;padding-bottom:env(safe-area-inset-bottom);
+  }
+  nav button{
+    flex:1;background:none;border:none;padding:8px 2px 10px;font:inherit;font-size:10.5px;color:var(--gris);
+    cursor:pointer;border-top:3px solid transparent;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative;
+  }
+  nav button svg{width:20px;height:20px}
+  nav button[aria-current="true"]{color:var(--rojo);border-top-color:var(--rojo);font-weight:600}
+  .badge{
+    position:absolute;top:3px;right:calc(50% - 20px);background:var(--rojo);color:#fff;font-size:9.5px;
+    font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px;
+  }
+
+  section{display:none;padding-top:14px}
+  section.activa{display:block}
+  h2{font-size:16px;margin:0 0 4px;font-weight:650;letter-spacing:-.01em}
+  .sub{color:var(--gris);font-size:12.5px;margin:0 0 12px}
+  .tarjeta{background:var(--blanco);border:1px solid var(--linea);border-radius:14px;padding:13px;margin-bottom:12px}
+
+  /* ---------- resumen ---------- */
+  .barra{display:flex;height:9px;border-radius:5px;overflow:hidden;background:#E6ECE9;margin:11px 0 10px}
+  .barra i{display:block;height:100%}
+  .leyenda{display:flex;flex-wrap:wrap;gap:5px 13px;font-size:12px;color:var(--gris)}
+  .leyenda b{color:var(--tinta);font-variant-numeric:tabular-nums}
+  .punto{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+
+  /* ---------- filas ---------- */
+  .fila{background:var(--blanco);border:1px solid var(--linea);border-left:5px solid #CBD5D0;border-radius:12px;padding:10px 12px;margin-bottom:7px}
+  .fila.puntual{border-left-color:var(--verde)} .fila.t1{border-left-color:var(--amarillo)}
+  .fila.t2{border-left-color:var(--rojo)} .fila.falta{border-left-color:var(--plomo)} .fila.permiso{border-left-color:var(--azul)}
+  .fila-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .nombre{font-weight:600;font-size:14.5px;line-height:1.3}
+  .marca-estado{font-size:12px;color:var(--gris);margin-top:2px;display:flex;align-items:center;gap:5px}
+  .multa{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:15px}
+  .multa.cero{color:var(--gris);font-weight:500;font-size:13.5px}
+  .rejilla{display:flex;gap:5px;margin-top:8px}
+  .rejilla button{
+    flex:1;min-width:0;padding:11px 2px;border-radius:9px;border:1.5px solid var(--linea);background:#F8FAF9;
+    font:inherit;font-size:12px;font-weight:600;color:var(--gris);cursor:pointer;line-height:1.15;white-space:nowrap;
+  }
+  .rejilla .b-puntual[aria-pressed="true"]{background:var(--verde);border-color:var(--verde);color:#fff}
+  .rejilla .b-t1[aria-pressed="true"]{background:var(--amarillo);border-color:#DDB200;color:#3D2F00}
+  .rejilla .b-t2[aria-pressed="true"]{background:var(--rojo);border-color:var(--rojo);color:#fff}
+  .rejilla .b-falta[aria-pressed="true"]{background:var(--plomo);border-color:var(--plomo);color:#fff}
+  .rejilla .b-permiso{flex:1.15}
+  .rejilla .b-permiso[aria-pressed="true"]{background:var(--azul);border-color:var(--azul);color:#fff}
+  .marca-estado{flex-wrap:wrap}
+  .panel-permiso{border:1.5px solid var(--azul);border-radius:12px;padding:11px;margin-top:9px;background:#F3F8FC}
+  .tipos{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  .tipos button{padding:8px 11px;border-radius:20px;border:1.5px solid var(--linea);background:var(--blanco);font:inherit;font-size:12px;color:var(--gris);cursor:pointer}
+  .tipos button[aria-pressed="true"]{background:var(--azul);border-color:var(--azul);color:#fff;font-weight:600}
+  .tag{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;background:var(--amarillo-suave);color:#7A5C00}
+  .tag.rec{background:var(--rojo-suave);color:var(--rojo)}
+  .segm{display:flex;margin-bottom:11px;border:1.5px solid var(--linea);border-radius:11px;overflow:hidden;background:var(--blanco)}
+  .segm button{flex:1;padding:10px 3px;border:none;background:none;font:inherit;font-size:12.5px;font-weight:600;color:var(--gris);cursor:pointer;white-space:nowrap}
+  .segm button[aria-pressed="true"]{background:var(--verde);color:#fff}
+  .panel-ajuste{border:1.5px solid var(--verde);border-radius:12px;padding:11px;margin-top:9px;background:var(--verde-suave)}
+  .panel-ajuste input{width:100%;margin-top:8px}
+  tbody tr.sel{background:var(--verde-suave)}
+  .tira{display:flex;gap:6px;overflow-x:auto;padding:1px 1px 9px;scrollbar-width:thin}
+  .tira button{flex:none;min-width:48px;padding:7px 8px;border-radius:11px;border:1.5px solid var(--linea);
+    background:var(--blanco);font:inherit;color:var(--gris);cursor:pointer;text-align:center;line-height:1.1;border-bottom-width:3px}
+  .tira button b{display:block;font-size:14.5px;font-weight:700;color:var(--tinta)}
+  .tira button small{display:block;font-size:9.5px;margin-top:1px}
+  .tira button.conmulta{border-bottom-color:var(--rojo)}
+  .tira button.cobrado{border-bottom-color:var(--verde)}
+  .tira button.sel{background:var(--verde);border-color:var(--verde);color:#fff}
+  .tira button.sel b{color:#fff}
+  table.matriz th,table.matriz td{text-align:center;padding:6px 5px;font-size:11.5px}
+  table.matriz .fija{position:sticky;left:0;z-index:2;background:var(--blanco);text-align:left;max-width:106px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-shadow:1px 0 0 var(--linea)}
+  table.matriz tfoot .fija{background:var(--verde-suave)}
+  table.matriz thead .fija{background:var(--blanco)}
+  .c-ok{color:var(--verde);font-weight:700}
+  .c-t1{background:var(--amarillo-suave);font-weight:700}
+  .c-t2{background:var(--rojo-suave);color:var(--rojo);font-weight:700}
+  .c-fal{color:var(--gris);font-weight:700}
+  .c-per{color:var(--azul);font-weight:700}
+  .chk{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;margin-bottom:12px;cursor:pointer;line-height:1.35}
+  .chk input{width:18px;height:18px;accent-color:var(--verde);flex:none;margin-top:1px}
+  .pie-fila{display:flex;align-items:center;gap:10px;margin-top:9px;flex-wrap:wrap;font-size:12px;color:var(--gris)}
+  .enlace{background:none;border:none;color:var(--verde);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;padding:4px 0}
+  .enlace.rojo{color:var(--rojo)}
+  .pagado{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gris);cursor:pointer;margin-left:auto}
+  .pagado input{width:17px;height:17px;accent-color:var(--verde)}
+  .bloqueado{background:var(--amarillo-suave);border:1px solid #E5BC13;border-radius:10px;padding:9px 10px;margin-top:9px;font-size:12.5px}
+  .bloqueado input[type=text]{width:100%;margin:7px 0}
+
+  input,textarea,select{font:inherit;padding:10px;border:1px solid var(--linea);border-radius:10px;background:var(--blanco);color:var(--tinta);max-width:100%}
+  input[type=date],input[type=month],input[type=time],input[type=number]{font-variant-numeric:tabular-nums}
+  textarea{width:100%;min-height:120px;resize:vertical;line-height:1.55}
+  .btn{padding:12px 15px;border-radius:11px;border:1.5px solid var(--verde);background:var(--verde);color:#fff;font:inherit;font-weight:600;font-size:14px;cursor:pointer}
+  .btn.sec{background:var(--blanco);color:var(--verde)}
+  .btn.roja{background:var(--rojo);border-color:var(--rojo)}
+  .btn.peligro{background:var(--blanco);color:var(--rojo);border-color:var(--rojo)}
+  .btn.mini{padding:8px 11px;font-size:12.5px;border-radius:9px}
+  .btn.ancho{width:100%}
+  button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--amarillo);outline-offset:1px}
+  .barra-acciones{display:flex;gap:7px;align-items:center;margin-bottom:11px;flex-wrap:wrap}
+  .buscar{width:100%;margin-bottom:9px}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{padding:7px 4px;text-align:right;border-bottom:1px solid var(--linea);font-variant-numeric:tabular-nums}
+  th:first-child,td:first-child{text-align:left;font-variant-numeric:normal}
+  th{font-size:11px;color:var(--gris);font-weight:600}
+  tfoot td{font-weight:700;border-bottom:none;background:var(--verde-suave)}
+
+  .kpi{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:12px}
+  .kpi > div{flex:1 1 45%;background:var(--blanco);border:1px solid var(--linea);border-radius:12px;padding:10px 11px;border-top:3px solid var(--verde)}
+  .kpi > div.amar{border-top-color:var(--amarillo)} .kpi > div.roja{border-top-color:var(--rojo)}
+  .kpi span{display:block;font-size:11.5px;color:var(--gris)}
+  .kpi b{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+
+  .item{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--linea);gap:10px}
+  .item:last-child{border-bottom:none}
+  .item small{display:block;color:var(--gris);font-size:11.5px}
+  .quitar{background:none;border:none;color:var(--rojo);font:inherit;font-size:12.5px;cursor:pointer;padding:4px 6px;white-space:nowrap}
+  .vacio{text-align:center;color:var(--gris);padding:24px 12px}
+  .vacio p{margin:0 0 14px}
+  .aviso{background:var(--amarillo-suave);border:1px solid #E5BC13;border-radius:11px;padding:10px 12px;font-size:12.5px;margin-bottom:12px}
+  .aviso.error{background:var(--rojo-suave);border-color:#F0A0A3}
+  .campo{margin-bottom:11px}
+  .campo label{display:block;font-size:12px;color:var(--gris);margin-bottom:4px}
+  .campo input,.campo select{width:100%}
+  .dos{display:flex;gap:9px} .dos > *{flex:1}
+  .solic{border:1px solid var(--linea);border-radius:12px;padding:11px;margin-bottom:9px;background:var(--blanco)}
+  .solic.pend{border-left:5px solid var(--amarillo)}
+  .solic.apro{border-left:5px solid var(--verde)} .solic.rech{border-left:5px solid var(--rojo)}
+  .etq{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--fondo);color:var(--gris)}
+  .etq.pend{background:var(--amarillo-suave);color:#7A5C00} .etq.apro{background:var(--verde-suave);color:var(--verde)}
+  .etq.rech{background:var(--rojo-suave);color:var(--rojo)}
+
+  /* ---------- hoja de sesión ---------- */
+  .capa{position:fixed;inset:0;background:rgba(10,30,22,.5);z-index:50;display:none;align-items:flex-end;justify-content:center}
+  .capa.ver{display:flex}
+  .hoja{background:var(--blanco);width:100%;max-width:430px;border-radius:18px 18px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom))}
+  .hoja h3{margin:0 0 3px;font-size:17px}
+  .hoja p{margin:0 0 14px;color:var(--gris);font-size:12.5px}
+  #toast{
+    position:fixed;bottom:100px;left:50%;transform:translateX(-50%);z-index:60;background:var(--tinta);color:#fff;
+    padding:11px 17px;border-radius:22px;font-size:13px;box-shadow:0 6px 20px rgba(0,40,28,.3);opacity:0;pointer-events:none;
+    max-width:88vw;text-align:center;
+  }
+  #toast.ver{opacity:1}
+  @media (prefers-reduced-motion:no-preference){ #toast{transition:opacity .2s} .barra i{transition:width .3s} }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div><h1 style="margin:0;font-size:15px;font-weight:700;letter-spacing:-.01em">Registro de Asistencia</h1></div>
+    <button class="rol" id="btnRol"><i></i><span id="rolTxt">Encargada</span></button>
+  </div>
+  <div class="greca"></div>
+
+  <div class="caja-panel">
+    <p>Caja del equipo · <span id="nomAgencia">Agencia Pinto</span></p>
+    <p class="caja-monto num" id="cajaSaldo">S/ 0.00</p>
+    <div class="caja-sub">
+      <div>Cobrado<b class="num" id="hCobrado">S/ 0.00</b></div>
+      <div>Por cobrar<b class="num" id="hPendiente">S/ 0.00</b></div>
+      <div>Gastos<b class="num" id="hGastos">S/ 0.00</b></div>
+    </div>
+  </div>
+  <span class="guardado" id="estadoGuardado"></span>
+
+  <main class="pad">
+
+    <!-- ================= HOY ================= -->
+    <section id="tab-hoy" class="activa">
+      <div class="barra-acciones">
+        <input type="date" id="fecha" style="flex:1">
+        <button class="btn sec mini" id="btnHoy">Hoy</button>
+        <button class="btn mini" id="btnTodosPuntuales">Todos puntuales</button>
+      </div>
+      <div id="avisoFecha"></div>
+
+      <div class="tarjeta">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <h2 style="margin:0">Resumen del día</h2>
+          <span class="multa num" id="montoDia">S/ 0.00</span>
+        </div>
+        <div class="barra" id="barraDia"></div>
+        <div class="leyenda">
+          <span><i class="punto" style="background:var(--verde)"></i>Puntuales <b id="cPuntual">0</b></span>
+          <span><i class="punto" style="background:var(--amarillo)"></i>Hasta 8:45 <b id="cT1">0</b></span>
+          <span><i class="punto" style="background:var(--rojo)"></i>Después <b id="cT2">0</b></span>
+          <span><i class="punto" style="background:var(--plomo)"></i>Faltas <b id="cFalta">0</b></span>
+          <span><i class="punto" style="background:var(--azul)"></i>Permisos <b id="cPermiso">0</b></span>
+          <span><i class="punto" style="background:#CBD5D0"></i>Sin marcar <b id="cSin">0</b></span>
+        </div>
+      </div>
+
+      <input type="text" class="buscar" id="buscar" placeholder="Buscar analista">
+      <div id="listaEquipo"></div>
+    </section>
+
+    <!-- ================= CAJA ================= -->
+    <section id="tab-caja">
+      <h2>Caja recaudada</h2>
+      <p class="sub">Lo cobrado menos los gastos del equipo.</p>
+      <div class="kpi">
+        <div><span>Disponible</span><b class="num" id="kSaldo">S/ 0.00</b></div>
+        <div class="amar"><span>Multas generadas</span><b class="num" id="kGenerado">S/ 0.00</b></div>
+        <div><span>Cobrado</span><b class="num" id="kCobrado">S/ 0.00</b></div>
+        <div class="roja"><span>Por cobrar</span><b class="num" id="kPendiente">S/ 0.00</b></div>
+        <div class="roja"><span>Recargos por mora</span><b class="num" id="kRecargos">S/ 0.00</b></div>
+      </div>
+      <div id="avisoCobroHoy"></div>
+      <div class="tarjeta">
+        <h2>Pendientes por analista</h2>
+        <div id="listaPendientes" style="margin-top:8px"></div>
+      </div>
+      <div class="tarjeta" id="cardGasto">
+        <h2>Registrar gasto</h2>
+        <div class="dos" style="margin-top:10px">
+          <div class="campo"><label for="gFecha">Fecha</label><input type="date" id="gFecha"></div>
+          <div class="campo"><label for="gMonto">Monto (S/)</label><input type="number" id="gMonto" min="0" step="0.5" inputmode="decimal" placeholder="0.00"></div>
+        </div>
+        <div class="campo"><label for="gDesc">Concepto</label><input type="text" id="gDesc" placeholder="Compartir del equipo, agua, útiles"></div>
+        <button class="btn ancho" id="btnGasto">Registrar gasto</button>
+      </div>
+      <div class="tarjeta" id="cardInicial">
+        <h2>Saldo inicial de la caja</h2>
+        <p class="sub" style="margin:6px 0 10px">Lo que el equipo ya tenía juntado antes de usar la app. Suma al saldo disponible.</p>
+        <div class="campo"><input type="number" id="cSaldoIni" min="0" step="0.5" inputmode="decimal" placeholder="0.00"></div>
+        <button class="btn ancho" id="btnSaldoIni">Guardar saldo inicial</button>
+      </div>
+      <div class="tarjeta">
+        <h2>Movimientos</h2>
+        <div id="listaGastos" style="margin-top:8px"></div>
+      </div>
+    </section>
+
+    <!-- ================= REPORTE ================= -->
+    <section id="tab-reporte">
+      <h2>Reporte</h2>
+      <div class="barra-acciones">
+        <input type="month" id="mes" style="flex:1">
+        <button class="btn sec mini" id="btnCopiar">Copiar</button>
+        <button class="btn sec mini" id="btnCSV">CSV</button>
+      </div>
+      <div class="segm" id="modoReporte">
+        <button data-modo="analista" aria-pressed="true">Por analista</button>
+        <button data-modo="dia" aria-pressed="false">Por día</button>
+        <button data-modo="matriz" aria-pressed="false">Analista y día</button>
+      </div>
+      <div class="tira" id="tiraDias"></div>
+      <div class="tarjeta" style="overflow-x:auto">
+        <table id="tablaReporte"><thead></thead><tbody></tbody><tfoot></tfoot></table>
+      </div>
+      <div id="detalleDia"></div>
+    </section>
+
+    <!-- ================= CAMBIOS ================= -->
+    <section id="tab-cambios">
+      <h2>Solicitudes de cambio</h2>
+      <p class="sub" id="subCambios">Todo segundo cambio sobre un marcado necesita autorización del administrador.</p>
+      <div id="listaSolicitudes"></div>
+      <h2 style="margin-top:18px">Historial de marcados</h2>
+      <p class="sub">Queda registro de cada modificación, con quién y cuándo.</p>
+      <div class="tarjeta"><div id="listaBitacora"></div></div>
+    </section>
+
+    <!-- ================= AJUSTES ================= -->
+    <section id="tab-ajustes">
+      <div id="ajustesAdmin">
+        <h2>Equipo</h2>
+        <p class="sub">Pega la relación de analistas, un nombre por línea. Copiar la columna del Excel también funciona.</p>
+        <div class="tarjeta">
+          <textarea id="pegarLista" placeholder="Apaza Mamani, Luis&#10;Hancco Quispe, Rosa&#10;Mamani Flores, Carlos"></textarea>
+          <p class="sub" id="contadorNombres" style="margin:6px 0 10px">Sin nombres detectados todavía.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn" id="btnAgregarLista">Agregar al equipo</button>
+            <button class="btn sec" id="btnReemplazarLista">Reemplazar equipo</button>
+          </div>
+          <div id="listaAjustesEquipo" style="margin-top:15px"></div>
+        </div>
+
+        <h2>Reglas</h2>
+        <p class="sub">Dos tramos fijos. Se aplican desde el próximo marcado.</p>
+        <div class="tarjeta">
+          <div class="dos">
+            <div class="campo"><label for="cCorte">Corte entre tramos</label><input type="time" id="cCorte"></div>
+            <div class="campo"><label for="cMulta1">Hasta el corte (S/)</label><input type="number" id="cMulta1" min="0" step="0.5" inputmode="decimal"></div>
+          </div>
+          <div class="dos">
+            <div class="campo"><label for="cMulta2">Después del corte (S/)</label><input type="number" id="cMulta2" min="0" step="0.5" inputmode="decimal"></div>
+            <div class="campo"><label for="cMultaFalta">Falta (S/)</label><input type="number" id="cMultaFalta" min="0" step="0.5" inputmode="decimal"></div>
+          </div>
+          <div class="campo"><label for="cRecargo">Recargo si la multa no se cobra el mismo día (S/)</label><input type="number" id="cRecargo" min="0" step="0.5" inputmode="decimal"></div>
+          <div class="dos">
+            <div class="campo"><label for="cCambios">Cambios libres del usuario</label><input type="number" id="cCambios" min="0" max="3" step="1" inputmode="numeric"></div>
+            <div class="campo"><label for="cAgencia">Agencia</label><input type="text" id="cAgencia"></div>
+          </div>
+          <label class="chk" for="cPermisoAut"><input type="checkbox" id="cPermisoAut"><span>Los permisos que registre la encargada quedan pendientes de mi confirmación</span></label>
+          <button class="btn ancho" id="btnGuardarCfg">Guardar reglas</button>
+        </div>
+
+        <h2>Seguridad</h2>
+        <div class="tarjeta">
+          <div id="avisoPin"></div>
+          <div class="campo"><label for="cPin">PIN de administrador</label><input type="text" id="cPin" inputmode="numeric" maxlength="8" autocomplete="off"></div>
+          <button class="btn sec ancho" id="btnGuardarPin" style="margin-bottom:12px">Guardar PIN</button>
+          <button class="btn peligro ancho" id="btnBorrar">Borrar todos los registros</button>
+        </div>
+
+        <h2>Respaldo y conexión</h2>
+        <div class="tarjeta">
+          <p class="sub" id="estadoConexion" style="margin-bottom:11px"></p>
+          <button class="btn sec ancho" id="btnConectar" style="margin-bottom:13px">Conectar o cambiar base de datos</button>
+          <textarea id="respaldo" placeholder="Aquí aparece el respaldo de todos los datos. También puedes pegar uno para restaurarlo." style="min-height:90px"></textarea>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn mini" id="btnGenerar">Generar respaldo</button>
+            <button class="btn sec mini" id="btnCopiarResp">Copiar</button>
+            <button class="btn peligro mini" id="btnRestaurar">Restaurar</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="ajustesUsuario" style="display:none">
+        <h2>Reglas vigentes</h2>
+        <div class="tarjeta"><div id="reglasLectura"></div></div>
+        <p class="sub">Para cambiar reglas, el equipo o los montos, entra como administrador desde el botón superior.</p>
+      </div>
+
+      <h2>Sesión</h2>
+      <div class="tarjeta">
+        <p class="sub" style="margin-bottom:11px" id="txtSesion"></p>
+        <button class="btn sec ancho" id="btnCambiarRol">Cambiar de sesión</button>
+      </div>
+    </section>
+  </main>
+
+  <nav>
+    <button data-tab="hoy" aria-current="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Hoy</button>
+    <button data-tab="caja">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5 12 4l9 4.5v9L12 22l-9-4.5z"/><path d="M12 12v10"/><path d="m3 8.5 9 4.5 9-4.5"/></svg>Caja</button>
+    <button data-tab="reporte">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>Reporte</button>
+    <button data-tab="cambios">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h11a4 4 0 0 1 0 8h-3"/><path d="m7 6-3 3 3 3"/><path d="m15 20 3-3"/></svg>Cambios<span class="badge" id="badgeCambios" style="display:none">0</span></button>
+    <button data-tab="ajustes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 8h16M4 16h16"/><circle cx="9" cy="8" r="2.4" fill="#fff"/><circle cx="15" cy="16" r="2.4" fill="#fff"/></svg>Ajustes</button>
+  </nav>
+</div>
+
+<div class="capa" id="capaSesion">
+  <div class="hoja">
+    <h3>¿Quién va a registrar?</h3>
+    <p>El administrador autoriza cambios y edita reglas. La encargada marca la asistencia del día.</p>
+    <button class="btn sec ancho" id="btnEntrarUsuario" style="margin-bottom:10px">Entrar como encargada</button>
+    <div id="bloquePin" style="display:none;margin-bottom:10px">
+      <div class="campo"><label for="pinInput">PIN de administrador</label><input type="password" id="pinInput" inputmode="numeric" maxlength="8" autocomplete="off"></div>
+      <button class="btn roja ancho" id="btnValidarPin">Entrar</button>
+      <p class="sub" id="pinError" style="color:var(--rojo);margin:8px 0 0;display:none">PIN incorrecto.</p>
+    </div>
+    <button class="btn ancho" id="btnMostrarPin">Entrar como administrador</button>
+    <button class="enlace" id="cerrarHoja" style="width:100%;margin-top:12px;text-align:center">Cerrar</button>
+  </div>
+</div>
+<div class="capa" id="capaBase">
+  <div class="hoja">
+    <h3>Conectar la base de datos</h3>
+    <p>Pega la dirección de tu Realtime Database de Firebase. Termina en firebaseio.com o firebasedatabase.app</p>
+    <div class="campo"><input type="text" id="dbUrl" placeholder="https://tu-proyecto-default-rtdb.firebaseio.com" autocomplete="off" spellcheck="false" style="width:100%"></div>
+    <button class="btn ancho" id="btnProbarDB">Probar y conectar</button>
+    <p class="sub" id="dbMsg" style="margin:10px 0 0"></p>
+    <button class="enlace" id="cerrarBase" style="width:100%;margin-top:10px;text-align:center">Cerrar</button>
+  </div>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+const KEY = "asistencia_agencia_pinto_v1";
+const KEY_ROL = "rol_local_pinto";
+const COMPARTIDO = true;
+
+const cfgDefault = {
+  entidad:"Registro de Asistencia", agencia:"Agencia Pinto", corte:"08:45",
+  multa1:10, multa2:20, multaFalta:0, recargo:10, saldoInicial:0, cambiosUsuario:1, pin:"2026", permisoAutoriza:true
+};
+const PERMISOS = ["Permiso particular","Comisión de servicio","Capacitación","Vacaciones","Descanso médico","Otro"];
+const ESTADOS = {
+  puntual:{ etq:"Puntual",      color:"var(--verde)"   },
+  t1:     { etq:"Hasta 8:45",   color:"var(--amarillo)"},
+  t2:     { etq:"Después 8:45", color:"var(--rojo)"    },
+  falta:  { etq:"Falta",        color:"var(--plomo)"   },
+  permiso:{ etq:"Permiso",      color:"var(--azul)"    }
+};
+let state = { cfg:{...cfgDefault}, equipo:[], dias:{}, gastos:[], solicitudes:[], bitacora:[] };
+let rol = "usuario";
+let almacenOk = true;
+let abiertos = {};      // filas expandidas
+let draft = null;         // solicitud de cambio en preparación {id, estado}
+let permisoDraft = null;  // permiso en preparación {id, tipo, nota}
+let ajusteDraft = null;   // ajuste de multa {id, monto, mot}
+let modoRep = "analista", diaDetalle = null, diaSel = null;
+
+const $ = s => document.querySelector(s);
+const money = n => "S/ " + (Number(n)||0).toFixed(2);
+const montoCorto = n => "S/ " + ((Number(n)||0) % 1 === 0 ? (Number(n)||0) : (Number(n)||0).toFixed(2));
+const deuda = r => (Number(r.m)||0) + (Number(r.rec)||0);
+const uid = () => Math.random().toString(36).slice(2,9);
+const esAdmin = () => rol === "admin";
+function isoHoy(d){ d = d||new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function fechaCorta(iso){ const p = String(iso).split("-"); return p[2]+"/"+p[1]+"/"+p[0]; }
+function ahoraHM(){ const d = new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+function on(sel, ev, fn){ const el = $(sel); if (el) el.addEventListener(ev, fn); }
+
+let tToast;
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.classList.add("ver"); clearTimeout(tToast); tToast = setTimeout(()=>t.classList.remove("ver"), 2600); }
+function confirmable(btn, txtConfirmar, accion){
+  if (!btn) return;
+  let armado = false, tid; const original = btn.textContent;
+  btn.addEventListener("click", ()=>{
+    if (!armado){ armado = true; btn.textContent = txtConfirmar; tid = setTimeout(()=>{ armado = false; btn.textContent = original; }, 4000); return; }
+    clearTimeout(tid); armado = false; btn.textContent = original; accion();
+  });
+}
+function montoDe(e){
+  const c = state.cfg;
+  if (e === "t1") return Number(c.multa1)||0;
+  if (e === "t2") return Number(c.multa2)||0;
+  if (e === "falta") return Number(c.multaFalta)||0;
+  return 0;
+}
+function anotar(txt, quien){
+  state.bitacora.unshift({ ts:new Date().toISOString(), rol:quien||rol, txt });
+  if (state.bitacora.length > 250) state.bitacora.length = 250;
+}
+
+/* ================= almacenamiento ================= */
+/* Dirección de la Realtime Database de Firebase. Al dejarla escrita aquí,
+   nadie del equipo tiene que configurar nada: basta con abrir el enlace. */
+const FIREBASE_URL = "";
+const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxaYemG8HBZvTDYvRptWKhprLhdNgKugoFIETxw4C16irFJl5cjF6oTpAh9v7-2v8zb1Q/exec";
+function sheetsUrl(){ return leerLocal("pinto_sheets_url") || SHEETS_URL; }
+let backend = "memoria";           // claude | firebase | memoria
+let pendienteGuardar = null, ultimoEscrito = 0, ultimoRemoto = "", timerSync = null;
+
+function leerLocal(k){ try{ return window.localStorage.getItem(k); }catch(e){ return null; } }
+function escribirLocal(k,v){ try{ window.localStorage.setItem(k,v); }catch(e){} }
+function limpiarUrl(u){ return (u||"").trim().replace(/\/+$/,""); }
+function urlDB(){
+  let u = "";
+  try{ u = limpiarUrl(new URLSearchParams(location.search).get("db")); }catch(e){ u = ""; }
+  if (!u) u = limpiarUrl(leerLocal("pinto_db_url"));
+  if (!u) u = limpiarUrl(FIREBASE_URL);
+  return u ? u + "/pinto.json" : "";
+}
+function aplicarDatos(d){
+  if (!d || typeof d !== "object") return;
+  state = {
+    cfg:{...cfgDefault, ...(d.cfg||{})},
+    equipo:d.equipo||[], dias:d.dias||{}, gastos:d.gastos||[],
+    solicitudes:d.solicitudes||[], bitacora:d.bitacora||[]
+  };
+  migrar();
+}
+async function cargar(){
+  if (window.storage){
+    backend = "claude"; almacenOk = true;
+    try{
+      const r = await window.storage.get(KEY, COMPARTIDO);
+      if (r && r.value) aplicarDatos(JSON.parse(r.value));
+    }catch(e){
+      try{ await window.storage.set(KEY, JSON.stringify(state), COMPARTIDO); }
+      catch(e2){ almacenOk = false; backend = "memoria"; }
+    }
+    try{ const r = await window.storage.get(KEY_ROL, false); if (r && r.value === "admin") rol = "admin"; }catch(e){}
+    return;
+  }
+  if (leerLocal("pinto_rol") === "admin") rol = "admin";
+  try{ const q = limpiarUrl(new URLSearchParams(location.search).get("db")); if (q) escribirLocal("pinto_db_url", q); }catch(e){}
+  const su = sheetsUrl();
+  if (su){
+    backend = "sheets";
+    try{
+      const res = await fetch(su, { cache:"no-store" });
+      if (!res.ok) throw new Error(res.status);
+      const d = await res.json();
+      if (d) aplicarDatos(d);
+      almacenOk = true;
+    }catch(e){ almacenOk = false; }
+    return;
+  }
+  const u = urlDB();
+  if (!u){ backend = "memoria"; almacenOk = false; return; }
+  backend = "firebase";
+  try{
+    const res = await fetch(u, { cache:"no-store" });
+    if (!res.ok) throw new Error("respuesta " + res.status);
+    const txt = await res.text(); ultimoRemoto = txt;
+    aplicarDatos(JSON.parse(txt)); almacenOk = true;
+  }catch(e){ almacenOk = false; }
+}
+function ocupado(){ return !!(draft || permisoDraft); }
+async function sincronizar(){
+  if (backend !== "firebase" || !almacenOk) return;
+  if (pendienteGuardar || Date.now() - ultimoEscrito < 3000 || ocupado()) return;
+  try{
+    const res = await fetch(urlDB(), { cache:"no-store" });
+    if (!res.ok) return;
+    const txt = await res.text();
+    if (txt === ultimoRemoto) return;
+    ultimoRemoto = txt;
+    aplicarDatos(JSON.parse(txt));
+    const el = document.activeElement;
+    const escribiendo = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA") && $("#tab-ajustes").classList.contains("activa");
+    if (!escribiendo) volcarConfig();
+    pintarTodo(); marcarEstado("Actualizado");
+  }catch(e){}
+}
+function migrar(){
+  for (const f in state.dias) for (const id in state.dias[f]){
+    const r = state.dias[f][id];
+    if (r.e === "tarde"){ r.e = (r.t === "tarde2" ? "t2" : "t1"); delete r.t; delete r.h; delete r.min; }
+    if (typeof r.v !== "number") r.v = 0;
+    if (r.e === "permiso" && typeof r.conf === "undefined") r.conf = true;
+  }
+}
+function guardar(){
+  if (backend === "memoria" || !almacenOk) return;
+  marcarEstado("Guardando…");
+  clearTimeout(pendienteGuardar);
+  pendienteGuardar = setTimeout(async ()=>{
+    pendienteGuardar = null;
+    const cuerpo = JSON.stringify(state);
+    ultimoEscrito = Date.now();
+    try{
+      if (backend === "claude"){ await window.storage.set(KEY, cuerpo, COMPARTIDO); }
+      else if (backend === "sheets"){
+        const res = await fetch(sheetsUrl(), { method:"POST", body:cuerpo, headers:{"Content-Type":"application/json"} });
+        if (!res.ok) throw new Error("respuesta " + res.status);
+      } else {
+        const res = await fetch(urlDB(), { method:"PUT", body:cuerpo, headers:{"Content-Type":"application/json"} });
+        if (!res.ok) throw new Error("respuesta " + res.status);
+        ultimoRemoto = cuerpo;
+      }
+      ultimoEscrito = Date.now();
+      marcarEstado("Guardado");
+    }catch(e){ marcarEstado("Sin guardar"); }
+  }, 500);
+}
+async function guardarRol(){
+  if (backend === "claude"){ try{ await window.storage.set(KEY_ROL, rol, false); }catch(e){} }
+  else escribirLocal("pinto_rol", rol);
+}
+function marcarEstado(txt){
+  const el = $("#estadoGuardado"); if (!el) return;
+  el.textContent = txt;
+  if (txt === "Guardado" || txt === "Actualizado") setTimeout(()=>{ if (el.textContent === txt) el.textContent = ""; }, 1600);
+}
+
+/* ============ recargo por cobranza fuera de fecha ============ */
+function aplicarRecargos(){
+  const monto = Number(state.cfg.recargo)||0;
+  if (monto <= 0) return;
+  const hoy = isoHoy(), porFecha = {};
+  for (const f in state.dias){
+    if (f >= hoy) continue;
+    for (const id in state.dias[f]){
+      const r = state.dias[f][id];
+      if ((Number(r.m)||0) > 0 && !r.p && !r.rec && !r.fijo){ r.rec = monto; porFecha[f] = (porFecha[f]||0) + 1; }
+    }
+  }
+  const fechas = Object.keys(porFecha);
+  if (!fechas.length) return;
+  fechas.forEach(f=> anotar("recargo de "+money(monto)+" aplicado a "+porFecha[f]+" multa(s) sin cobrar del "+fechaCorta(f), "sistema"));
+  guardar();
+}
+
+/* ================= totales ================= */
+function totales(){
+  let generado = 0, cobrado = 0, recargos = 0;
+  for (const f in state.dias) for (const id in state.dias[f]){
+    const r = state.dias[f][id], t = deuda(r);
+    generado += t; recargos += Number(r.rec)||0;
+    if (r.p) cobrado += t;
+  }
+  const gastos = state.gastos.reduce((s,g)=>s+(Number(g.monto)||0),0);
+  const inicial = Number(state.cfg.saldoInicial)||0;
+  return { generado, cobrado, pendiente:generado-cobrado, gastos, recargos, inicial, saldo:inicial+cobrado-gastos };
+}
+function pintarCabecera(){
+  const t = totales();
+  $("#cajaSaldo").textContent = money(t.saldo);
+  $("#hCobrado").textContent = money(t.cobrado);
+  $("#hPendiente").textContent = money(t.pendiente);
+  $("#hGastos").textContent = money(t.gastos);
+  $("#kSaldo").textContent = money(t.saldo);
+  $("#kGenerado").textContent = money(t.generado);
+  $("#kCobrado").textContent = money(t.cobrado);
+  $("#kPendiente").textContent = money(t.pendiente);
+  $("#kRecargos").textContent = money(t.recargos);
+  $("#nomAgencia").textContent = state.cfg.agencia;
+  $("#rolTxt").textContent = esAdmin() ? "Administrador" : "Encargada";
+  $("#btnRol").className = "rol" + (esAdmin() ? " admin" : "");
+  const pend = state.solicitudes.filter(s=>s.estado === "pendiente").length;
+  const b = $("#badgeCambios");
+  b.style.display = pend ? "flex" : "none"; b.textContent = pend;
+}
+
+/* ================= permisos ================= */
+function dia(){
+  const f = $("#fecha").value || isoHoy();
+  if (!state.dias[f]) state.dias[f] = {};
+  return state.dias[f];
+}
+function permiso(id){
+  if (esAdmin()) return { ok:true };
+  const f = $("#fecha").value;
+  if (f !== isoHoy()) return { ok:false, motivo:"fecha" };
+  const r = (state.dias[f]||{})[id];
+  if (!r) return { ok:true };
+  if ((r.v||0) >= (Number(state.cfg.cambiosUsuario)||0)) return { ok:false, motivo:"limite" };
+  return { ok:true };
+}
+
+/* ================= HOY ================= */
+function aplicarEstado(id, nuevo, porAdmin){
+  const f = $("#fecha").value, d = dia(), a = state.equipo.find(x=>x.id === id);
+  const prev = d[id];
+  const esCambio = !!prev;
+  d[id] = {
+    e:nuevo, m:montoDe(nuevo), p:prev ? !!prev.p : false,
+    v:prev ? (porAdmin ? (prev.v||0) : (prev.v||0)+1) : 0,
+    ts:ahoraHM(), quien:rol
+  };
+  if (prev && prev.e === nuevo && prev.m) d[id].m = prev.m;
+  anotar((a?a.nombre:"—") + " · " + fechaCorta(f) + " · " + (esCambio ? ESTADOS[prev.e].etq+" → "+ESTADOS[nuevo].etq : "marcado "+ESTADOS[nuevo].etq));
+  abiertos[id] = false;
+  guardar(); pintarTodo();
+}
+function aplicarPermiso(id, tipo, nota){
+  const f = $("#fecha").value, d = dia(), a = state.equipo.find(x=>x.id === id);
+  const prev = d[id], esCambio = !!prev;
+  const necesita = !esAdmin() && !!state.cfg.permisoAutoriza;
+  d[id] = {
+    e:"permiso", tipo, nota:(nota||"").trim(), m:0, p:false,
+    v:prev ? (esAdmin() ? (prev.v||0) : (prev.v||0)+1) : 0,
+    ts:ahoraHM(), quien:rol, conf:!necesita
+  };
+  if (necesita){
+    state.solicitudes.unshift({
+      id:uid(), clase:"permiso", fecha:f, analistaId:id, nombre:a?a.nombre:"—",
+      actual:esCambio ? prev.e : null, propuesto:"permiso", tipo,
+      motivo:(nota||"").trim(), estado:"pendiente", ts:new Date().toISOString()
+    });
+  }
+  anotar((a?a.nombre:"—")+" · "+fechaCorta(f)+" · permiso ("+tipo+")"+(necesita ? " · pendiente de confirmación" : ""));
+  permisoDraft = null; abiertos[id] = false;
+  guardar(); pintarTodo();
+  toast(necesita ? "Permiso enviado para confirmación" : "Permiso registrado");
+}
+function ajustarMulta(id, monto, mot, condonar){
+  const f = $("#fecha").value, d = dia(), a = state.equipo.find(x=>x.id === id), r = d[id];
+  if (!r) return;
+  const antes = deuda(r);
+  r.m = condonar ? 0 : Math.max(0, Number(monto)||0);
+  r.rec = 0; r.fijo = true; r.cond = !!condonar; r.mot = (mot||"").trim();
+  if (!r.m) r.p = false;
+  anotar((a?a.nombre:"—")+" · "+fechaCorta(f)+" · "+(condonar ? "multa condonada" : "monto ajustado")+": "+money(antes)+" → "+money(r.m)+(r.mot ? " ("+r.mot+")" : ""));
+  ajusteDraft = null; guardar(); pintarTodo();
+  toast(condonar ? "Multa condonada" : "Monto actualizado");
+}
+function pintarHoy(){
+  const cont = $("#listaEquipo"), filtro = $("#buscar").value.trim().toLowerCase(), d = dia();
+  const f = $("#fecha").value;
+  $("#avisoFecha").innerHTML = (!esAdmin() && f !== isoHoy())
+    ? '<div class="aviso">Estás viendo un día anterior. Solo el administrador puede modificar marcados de días pasados.</div>' : "";
+
+  if (!state.equipo.length){
+    cont.innerHTML = esAdmin()
+      ? '<div class="vacio"><p>Todavía no hay equipo cargado. Pega la relación de analistas para empezar.</p><button class="btn" id="irAjustes">Cargar equipo</button></div>'
+      : '<div class="vacio"><p>El administrador aún no ha cargado la relación de analistas.</p></div>';
+    const b = $("#irAjustes"); if (b) b.addEventListener("click", ()=>{ irTab("ajustes"); $("#pegarLista").focus(); });
+    pintarResumenDia(); return;
+  }
+
+  cont.innerHTML = "";
+  state.equipo.filter(a=>!filtro || a.nombre.toLowerCase().includes(filtro)).forEach(a=>{
+    const r = d[a.id] || null;
+    const el = document.createElement("div");
+    el.className = "fila " + (r ? r.e : "");
+    const cab = document.createElement("div");
+    cab.className = "fila-top";
+    cab.innerHTML = '<div style="min-width:0"><div class="nombre"></div><div class="marca-estado"></div></div>' +
+                    (r ? '<span class="multa ' + (deuda(r) ? "" : "cero") + '">' + (deuda(r) ? money(deuda(r)) : "Sin multa") + '</span>' : "");
+    cab.querySelector(".nombre").textContent = a.nombre;
+    if (r){
+      cab.querySelector(".marca-estado").innerHTML =
+        '<i class="punto" style="background:'+ESTADOS[r.e].color+'"></i><span class="dt"></span>' +
+        (r.e === "permiso" && r.conf === false ? '<span class="tag">por confirmar</span>' : "") +
+        (r.rec ? '<span class="tag rec">+'+money(r.rec)+' recargo</span>' : "") +
+        (r.cond ? '<span class="tag">condonada</span>' : (r.fijo ? '<span class="tag">monto ajustado</span>' : ""));
+      cab.querySelector(".dt").textContent = ESTADOS[r.e].etq +
+        (r.e === "permiso" && r.tipo ? " · " + r.tipo : "") + (r.ts ? " · " + r.ts : "");
+    } else {
+      cab.querySelector(".marca-estado").remove();
+    }
+    el.appendChild(cab);
+
+    const abierto = abiertos[a.id] || !r;
+    if (abierto){
+      const g = document.createElement("div");
+      g.className = "rejilla";
+      const corte = state.cfg.corte;
+      const et1 = (Number(state.cfg.multa1)||0) > 0 ? montoCorto(state.cfg.multa1) : "Hasta "+corte;
+      const et2 = (Number(state.cfg.multa2)||0) > 0 ? montoCorto(state.cfg.multa2) : "Desp. "+corte;
+      g.innerHTML =
+        '<button class="b-puntual" title="Llegó a la hora" aria-pressed="'+!!(r&&r.e==="puntual")+'">Puntual</button>' +
+        '<button class="b-t1" title="Llegó hasta las '+corte+'" aria-pressed="'+!!(r&&r.e==="t1")+'">'+et1+'</button>' +
+        '<button class="b-t2" title="Llegó después de las '+corte+'" aria-pressed="'+!!(r&&r.e==="t2")+'">'+et2+'</button>' +
+        '<button class="b-falta" title="No asistió" aria-pressed="'+!!(r&&r.e==="falta")+'">Falta</button>' +
+        '<button class="b-permiso" title="Permiso o comisión · sin multa" aria-pressed="'+!!(r&&r.e==="permiso")+'">Permiso</button>';
+      const mapa = { ".b-puntual":"puntual", ".b-t1":"t1", ".b-t2":"t2", ".b-falta":"falta", ".b-permiso":"permiso" };
+      Object.keys(mapa).forEach(sel=>{
+        g.querySelector(sel).addEventListener("click", ()=>intentar(a.id, mapa[sel]));
+      });
+      el.appendChild(g);
+
+      if (permisoDraft && permisoDraft.id === a.id){
+        const box = document.createElement("div");
+        box.className = "panel-permiso";
+        box.innerHTML = '<b style="font-size:13px">¿Cuál es el motivo?</b><div class="tipos"></div>' +
+          '<input type="text" class="nota" placeholder="Detalle o sustento (opcional)" style="width:100%;margin-top:10px">' +
+          '<div style="display:flex;gap:8px;margin-top:10px;align-items:center"><button class="btn mini" data-ok>Guardar permiso</button><button class="enlace rojo" data-no>Cancelar</button></div>';
+        const nota = box.querySelector(".nota");
+        nota.value = permisoDraft.nota || "";
+        nota.addEventListener("input", ()=>{ permisoDraft.nota = nota.value; });
+        const tipos = box.querySelector(".tipos");
+        PERMISOS.forEach(t=>{
+          const b = document.createElement("button");
+          b.textContent = t;
+          b.setAttribute("aria-pressed", String(permisoDraft.tipo === t));
+          b.addEventListener("click", ()=>{ permisoDraft.nota = nota.value; permisoDraft.tipo = t; pintarHoy(); });
+          tipos.appendChild(b);
+        });
+        box.querySelector("[data-ok]").addEventListener("click", ()=>{
+          if (!permisoDraft.tipo){ toast("Elige el motivo del permiso"); return; }
+          aplicarPermiso(a.id, permisoDraft.tipo, nota.value);
+        });
+        box.querySelector("[data-no]").addEventListener("click", ()=>{ permisoDraft = null; pintarHoy(); });
+        el.appendChild(box);
+      }
+
+      if (ajusteDraft && ajusteDraft.id === a.id && r){
+        const box = document.createElement("div");
+        box.className = "panel-ajuste";
+        box.innerHTML = '<b style="font-size:13px">Monto a cobrar</b>' +
+          '<input type="number" class="mto" min="0" step="0.5" inputmode="decimal">' +
+          '<input type="text" class="mot" placeholder="Motivo (queda en el historial)">' +
+          '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn mini" data-ok>Guardar monto</button><button class="btn sec mini" data-cond>Condonar</button><button class="enlace rojo" data-no>Cancelar</button></div>';
+        box.querySelector(".mto").value = ajusteDraft.monto;
+        box.querySelector(".mot").value = ajusteDraft.mot;
+        box.querySelector("[data-ok]").addEventListener("click", ()=> ajustarMulta(a.id, box.querySelector(".mto").value, box.querySelector(".mot").value, false));
+        box.querySelector("[data-cond]").addEventListener("click", ()=> ajustarMulta(a.id, 0, box.querySelector(".mot").value, true));
+        box.querySelector("[data-no]").addEventListener("click", ()=>{ ajusteDraft = null; pintarHoy(); });
+        el.appendChild(box);
+      }
+
+      if (r){
+        const pie = document.createElement("div");
+        pie.className = "pie-fila";
+        if (r.e === "permiso" && r.nota){ const n = document.createElement("span"); n.textContent = "Sustento: " + r.nota; pie.appendChild(n); }
+        if (r.mot){ const m = document.createElement("span"); m.textContent = "Motivo: " + r.mot; pie.appendChild(m); }
+        if (esAdmin()){
+          const aj = document.createElement("button");
+          aj.className = "enlace"; aj.textContent = "Ajustar multa";
+          aj.addEventListener("click", ()=>{ ajusteDraft = { id:a.id, monto:deuda(r), mot:r.mot||"" }; permisoDraft = null; pintarHoy(); });
+          pie.appendChild(aj);
+        }
+        const cerrar = document.createElement("button");
+        cerrar.className = "enlace"; cerrar.style.marginLeft = "auto"; cerrar.textContent = "Cerrar";
+        cerrar.addEventListener("click", ()=>{ abiertos[a.id] = false; permisoDraft = null; pintarHoy(); });
+        pie.appendChild(cerrar);
+        el.appendChild(pie);
+      }
+    } else {
+      const pie = document.createElement("div");
+      pie.className = "pie-fila";
+      const btn = document.createElement("button");
+      btn.className = "enlace"; btn.textContent = "Cambiar";
+      btn.addEventListener("click", ()=>{ abiertos[a.id] = true; draft = null; pintarHoy(); });
+      pie.appendChild(btn);
+      if (r && r.v) { const s = document.createElement("span"); s.textContent = "corregido " + r.v + (r.v>1?" veces":" vez"); pie.appendChild(s); }
+      if (r && deuda(r) > 0){
+        const pg = document.createElement("label");
+        pg.className = "pagado";
+        pg.innerHTML = '<input type="checkbox" '+(r.p?"checked":"")+'> Pagada';
+        pg.querySelector("input").addEventListener("change", ev=>{
+          r.p = ev.target.checked;
+          anotar(a.nombre+" · "+fechaCorta(f)+" · multa "+(r.p?"cobrada":"marcada como no cobrada"));
+          guardar(); pintarTodo();
+        });
+        pie.appendChild(pg);
+      }
+      el.appendChild(pie);
+    }
+
+    if (draft && draft.id === a.id){
+      const box = document.createElement("div");
+      box.className = "bloqueado";
+      box.innerHTML = '<b>Ya usaste tu cambio en este marcado.</b> Envía la corrección a <b>'+ESTADOS[draft.estado].etq+'</b> para que el administrador la autorice.' +
+                      '<input type="text" placeholder="Motivo (opcional)" id="motivoSolic">' +
+                      '<div style="display:flex;gap:8px"><button class="btn mini" id="envSolic">Enviar solicitud</button><button class="enlace rojo" id="canSolic">Cancelar</button></div>';
+      box.querySelector("#envSolic").addEventListener("click", ()=>{
+        const rr = (state.dias[f]||{})[a.id];
+        state.solicitudes.unshift({
+          id:uid(), fecha:f, analistaId:a.id, nombre:a.nombre,
+          actual:rr ? rr.e : null, propuesto:draft.estado,
+          motivo:(box.querySelector("#motivoSolic").value||"").trim(),
+          estado:"pendiente", ts:new Date().toISOString()
+        });
+        anotar(a.nombre+" · "+fechaCorta(f)+" · solicitud de cambio a "+ESTADOS[draft.estado].etq);
+        draft = null; guardar(); pintarTodo(); toast("Solicitud enviada al administrador");
+      });
+      box.querySelector("#canSolic").addEventListener("click", ()=>{ draft = null; pintarHoy(); });
+      el.appendChild(box);
+    }
+    cont.appendChild(el);
+  });
+  pintarResumenDia();
+}
+function intentar(id, nuevo){
+  const p = permiso(id);
+  if (!p.ok){
+    if (p.motivo === "fecha"){ toast("Solo el administrador modifica días anteriores"); return; }
+    draft = { id, estado:nuevo }; permisoDraft = null; abiertos[id] = true; pintarHoy(); return;
+  }
+  if (nuevo === "permiso"){
+    const r = (state.dias[$("#fecha").value]||{})[id];
+    draft = null;
+    permisoDraft = { id, tipo:(r && r.e === "permiso" ? r.tipo : null), nota:(r && r.e === "permiso" ? r.nota : "") };
+    abiertos[id] = true; pintarHoy(); return;
+  }
+  aplicarEstado(id, nuevo, esAdmin());
+}
+function pintarResumenDia(){
+  const d = dia();
+  let p=0, t1=0, t2=0, f=0, pe=0, monto=0;
+  state.equipo.forEach(a=>{
+    const r = d[a.id]; if (!r) return;
+    monto += Number(r.m)||0;
+    if (r.e === "puntual") p++;
+    else if (r.e === "permiso") pe++;
+    else if (r.e === "t1") t1++; else if (r.e === "t2") t2++; else if (r.e === "falta") f++;
+  });
+  const sin = Math.max(0, state.equipo.length - (p+t1+t2+f+pe)), tot = Math.max(1, state.equipo.length);
+  $("#cPuntual").textContent = p; $("#cT1").textContent = t1; $("#cT2").textContent = t2;
+  $("#cFalta").textContent = f; $("#cPermiso").textContent = pe; $("#cSin").textContent = sin;
+  $("#montoDia").textContent = money(monto);
+  $("#barraDia").innerHTML =
+    '<i style="background:var(--verde);width:'+(p/tot*100)+'%"></i>' +
+    '<i style="background:var(--amarillo);width:'+(t1/tot*100)+'%"></i>' +
+    '<i style="background:var(--rojo);width:'+(t2/tot*100)+'%"></i>' +
+    '<i style="background:var(--plomo);width:'+(f/tot*100)+'%"></i>' +
+    '<i style="background:var(--azul);width:'+(pe/tot*100)+'%"></i>';
+}
+
+/* ================= CAJA ================= */
+function pintarCaja(){
+  $("#cardGasto").style.display = esAdmin() ? "block" : "none";
+  const hoy = isoHoy(), dh = state.dias[hoy] || {};
+  let pendHoy = 0, nHoy = 0;
+  for (const id in dh){ const r = dh[id]; if (!r.p && deuda(r) > 0){ pendHoy += deuda(r); nHoy++; } }
+  $("#avisoCobroHoy").innerHTML = (nHoy && (Number(state.cfg.recargo)||0) > 0)
+    ? '<div class="aviso">Hoy quedan <b>'+money(pendHoy)+'</b> por cobrar en '+nHoy+' multa(s). Lo que no se cobre hoy suma '+money(state.cfg.recargo)+' de recargo por multa.</div>'
+    : "";
+  const cont = $("#listaPendientes"), porAnalista = {};
+  for (const f in state.dias) for (const id in state.dias[f]){
+    const r = state.dias[f][id];
+    if (!r.p && deuda(r) > 0) porAnalista[id] = (porAnalista[id]||0) + deuda(r);
+  }
+  const ids = Object.keys(porAnalista).sort((a,b)=>porAnalista[b]-porAnalista[a]);
+  if (!ids.length) cont.innerHTML = '<p class="sub" style="margin:0">No hay multas pendientes de cobro.</p>';
+  else{
+    cont.innerHTML = "";
+    ids.forEach(id=>{
+      const a = state.equipo.find(x=>x.id === id);
+      const row = document.createElement("div");
+      row.className = "item";
+      row.innerHTML = '<span class="nm"></span><span style="display:flex;gap:10px;align-items:center"><b class="num">'+money(porAnalista[id])+'</b><button class="btn mini">Cobrar</button></span>';
+      row.querySelector(".nm").textContent = a ? a.nombre : "Analista retirado";
+      row.querySelector("button").addEventListener("click", ()=>{
+        for (const f in state.dias){ const r = state.dias[f][id]; if (r && deuda(r) > 0) r.p = true; }
+        anotar((a?a.nombre:"—")+" · cobro total de "+money(porAnalista[id]));
+        guardar(); pintarTodo(); toast("Cobro registrado");
+      });
+      cont.appendChild(row);
+    });
+  }
+  $("#cardInicial").style.display = esAdmin() ? "block" : "none";
+  const ul = $("#listaGastos"), ini = Number(state.cfg.saldoInicial)||0;
+  if (!state.gastos.length && !ini){ ul.innerHTML = '<p class="sub" style="margin:0">Aún no hay movimientos registrados.</p>'; return; }
+  ul.innerHTML = "";
+  if (ini){
+    const li0 = document.createElement("div");
+    li0.className = "item";
+    li0.innerHTML = '<span>Saldo inicial<small>Caja del equipo antes de la app</small></span><b class="num" style="color:var(--verde)">+'+money(ini)+'</b>';
+    ul.appendChild(li0);
+  }
+  state.gastos.slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).forEach(g=>{
+    const li = document.createElement("div");
+    li.className = "item";
+    li.innerHTML = '<span><span class="gd"></span><small></small></span><span style="display:flex;gap:10px;align-items:center"><b class="num" style="color:var(--rojo)">−'+money(g.monto)+'</b></span>';
+    li.querySelector(".gd").textContent = g.desc || "Gasto";
+    li.querySelector("small").textContent = fechaCorta(g.fecha);
+    if (esAdmin()){
+      const del = document.createElement("button");
+      del.className = "quitar"; del.textContent = "Eliminar";
+      del.addEventListener("click", ()=>{
+        state.gastos = state.gastos.filter(x=>x.id !== g.id);
+        anotar("gasto eliminado: "+(g.desc||"sin concepto")+" "+money(g.monto));
+        guardar(); pintarTodo(); toast("Gasto eliminado");
+      });
+      li.lastElementChild.appendChild(del);
+    }
+    ul.appendChild(li);
+  });
+}
+
+/* ================= REPORTE ================= */
+function filasReporte(){
+  const mes = $("#mes").value, acc = {};
+  state.equipo.forEach(a=> acc[a.id] = { nombre:a.nombre, t1:0, t2:0, faltas:0, permisos:0, recargo:0, generado:0, pendiente:0 });
+  for (const f in state.dias){
+    if (mes && f.indexOf(mes) !== 0) continue;
+    for (const id in state.dias[f]){
+      const r = state.dias[f][id];
+      if (!acc[id]) acc[id] = { nombre:"Analista retirado", t1:0, t2:0, faltas:0, permisos:0, recargo:0, generado:0, pendiente:0 };
+      if (r.e === "t1") acc[id].t1++;
+      if (r.e === "t2") acc[id].t2++;
+      if (r.e === "falta") acc[id].faltas++;
+      if (r.e === "permiso") acc[id].permisos++;
+      acc[id].recargo += Number(r.rec)||0;
+      acc[id].generado += deuda(r);
+      if (!r.p) acc[id].pendiente += deuda(r);
+    }
+  }
+  return Object.values(acc).sort((a,b)=> b.generado - a.generado || a.nombre.localeCompare(b.nombre));
+}
+function filasPorDia(){
+  const mes = $("#mes").value, out = [];
+  Object.keys(state.dias).filter(f=>!mes || f.indexOf(mes) === 0).sort().reverse().forEach(f=>{
+    const d = state.dias[f];
+    let p=0, t1=0, t2=0, fa=0, pe=0, gen=0, cob=0, n=0;
+    for (const id in d){
+      const r = d[id], t = deuda(r); n++;
+      if (r.e === "puntual") p++; else if (r.e === "t1") t1++; else if (r.e === "t2") t2++;
+      else if (r.e === "falta") fa++; else if (r.e === "permiso") pe++;
+      gen += t; if (r.p) cob += t;
+    }
+    if (n) out.push({ fecha:f, p, t1, t2, faltas:fa, permisos:pe, generado:gen, cobrado:cob });
+  });
+  return out;
+}
+function diasDelMes(){
+  const mes = $("#mes").value;
+  return Object.keys(state.dias).filter(f=>(!mes || f.indexOf(mes) === 0) && Object.keys(state.dias[f]).length).sort();
+}
+function celdaMatriz(r){
+  if (!r) return { txt:"", cls:"" };
+  const t = deuda(r);
+  if (r.e === "puntual") return { txt:"·", cls:"c-ok" };
+  if (r.e === "permiso") return { txt:"P", cls:"c-per" };
+  if (r.e === "falta")   return { txt:t ? String(t) : "F", cls:"c-fal" };
+  return { txt:t ? String(t) : "0", cls:(r.e === "t1" ? "c-t1" : "c-t2") };
+}
+function textoCelda(r){
+  if (!r) return "";
+  if (r.e === "puntual") return "OK";
+  if (r.e === "permiso") return "PERMISO";
+  if (r.e === "falta" && !deuda(r)) return "FALTA";
+  return deuda(r).toFixed(2);
+}
+function pintarTiraDias(){
+  const cont = $("#tiraDias"), dd = diasDelMes();
+  cont.innerHTML = "";
+  if (modoRep !== "matriz" || !dd.length) return;
+  const sem = ["dom","lun","mar","mié","jue","vie","sáb"];
+  const mes = document.createElement("button");
+  mes.innerHTML = '<b>Mes</b><small>todos</small>';
+  if (!diaSel) mes.className = "sel";
+  mes.addEventListener("click", ()=>{ diaSel = null; pintarReporte(); });
+  cont.appendChild(mes);
+  dd.forEach(f=>{
+    const d = state.dias[f];
+    let gen = 0, pend = 0;
+    for (const id in d){ const t = deuda(d[id]); gen += t; if (!d[id].p) pend += t; }
+    const b = document.createElement("button");
+    const dt = new Date(f + "T12:00:00");
+    b.innerHTML = '<b>'+f.slice(8)+'</b><small>'+sem[dt.getDay()]+'</small>';
+    b.className = (diaSel === f ? "sel " : "") + (gen ? (pend ? "conmulta" : "cobrado") : "");
+    b.title = fechaCorta(f) + (gen ? " · " + money(gen) : " · sin multas");
+    b.addEventListener("click", ()=>{ diaSel = (diaSel === f ? null : f); pintarReporte(); });
+    cont.appendChild(b);
+    if (diaSel === f) setTimeout(()=>{ try{ b.scrollIntoView({ block:"nearest", inline:"center" }); }catch(e){} }, 0);
+  });
+}
+function sinDatos(n){ return '<tr><td colspan="'+n+'" style="color:var(--gris);text-align:center;padding:18px">Sin registros en el mes elegido.</td></tr>'; }
+function pintarReporte(){
+  document.querySelectorAll("#modoReporte button").forEach(b=> b.setAttribute("aria-pressed", String(b.dataset.modo === modoRep)));
+  const th = $("#tablaReporte thead"), tb = $("#tablaReporte tbody"), tf = $("#tablaReporte tfoot"), c = state.cfg.corte;
+  tb.innerHTML = ""; tf.innerHTML = "";
+
+  if (modoRep !== "matriz") $("#tiraDias").innerHTML = "";
+  if (modoRep === "analista"){
+    $("#detalleDia").innerHTML = "";
+    $("#tablaReporte").className = "";
+    th.innerHTML = '<tr><th>Analista</th><th>≤'+c+'</th><th>&gt;'+c+'</th><th>Falta</th><th>Perm.</th><th>Recarg.</th><th>Multas</th><th>Debe</th></tr>';
+    const filas = filasReporte();
+    if (!filas.length){ tb.innerHTML = sinDatos(8); return; }
+    filas.forEach(f=>{
+      const tr = document.createElement("tr");
+      tr.innerHTML = '<td class="nm"></td><td>'+f.t1+'</td><td>'+f.t2+'</td><td>'+f.faltas+'</td><td>'+f.permisos+'</td><td>'+f.recargo.toFixed(2)+'</td><td>'+f.generado.toFixed(2)+'</td><td>'+f.pendiente.toFixed(2)+'</td>';
+      tr.querySelector(".nm").textContent = f.nombre;
+      tb.appendChild(tr);
+    });
+    const s = filas.reduce((o,f)=>({t1:o.t1+f.t1,t2:o.t2+f.t2,faltas:o.faltas+f.faltas,permisos:o.permisos+f.permisos,recargo:o.recargo+f.recargo,generado:o.generado+f.generado,pendiente:o.pendiente+f.pendiente}),{t1:0,t2:0,faltas:0,permisos:0,recargo:0,generado:0,pendiente:0});
+    tf.innerHTML = '<tr><td>Total</td><td>'+s.t1+'</td><td>'+s.t2+'</td><td>'+s.faltas+'</td><td>'+s.permisos+'</td><td>'+s.recargo.toFixed(2)+'</td><td>'+s.generado.toFixed(2)+'</td><td>'+s.pendiente.toFixed(2)+'</td></tr>';
+    return;
+  }
+
+  if (modoRep === "matriz"){
+    pintarTiraDias();
+    if (diaSel){
+      $("#tablaReporte").className = "";
+      const d = state.dias[diaSel] || {};
+      th.innerHTML = '<tr><th>Analista</th><th>Condición</th><th>Hora</th><th>Multa</th></tr>';
+      let gen=0, cob=0, marcados=0, cuenta={puntual:0,t1:0,t2:0,falta:0,permiso:0};
+      state.equipo.forEach(a=>{
+        const r = d[a.id], t = r ? deuda(r) : 0;
+        if (r){ marcados++; gen += t; if (r.p) cob += t; cuenta[r.e]++; }
+        const tr = document.createElement("tr");
+        tr.innerHTML = '<td class="nm"></td>' +
+          '<td style="text-align:left">' + (r ? '<i class="punto" style="background:'+ESTADOS[r.e].color+'"></i>'+ESTADOS[r.e].etq +
+              (r.e === "permiso" && r.tipo ? '<br><span style="color:var(--gris);font-size:10.5px;padding-left:14px">'+r.tipo+'</span>' : '') +
+              (r.cond ? '<br><span style="color:var(--gris);font-size:10.5px;padding-left:14px">condonada</span>' : '')
+            : '<span style="color:var(--gris)">Sin marcar</span>') + '</td>' +
+          '<td>' + (r && r.ts ? r.ts : "—") + '</td>' +
+          '<td>' + (t ? t.toFixed(2) + (r.p ? " ✓" : "") : "—") + '</td>';
+        tr.querySelector(".nm").textContent = a.nombre;
+        tb.appendChild(tr);
+      });
+      tf.innerHTML = '<tr><td>'+marcados+' de '+state.equipo.length+'</td><td></td><td></td><td>'+gen.toFixed(2)+'</td></tr>';
+      $("#detalleDia").innerHTML = '<p class="sub" style="text-align:center;margin-top:2px">' +
+        fechaCorta(diaSel)+' · '+cuenta.puntual+' puntuales · '+cuenta.t1+' hasta '+c+' · '+cuenta.t2+' después · ' +
+        cuenta.falta+' faltas · '+cuenta.permiso+' permisos · cobrado '+money(cob)+' de '+money(gen)+'</p>';
+      return;
+    }
+    $("#detalleDia").innerHTML = '<p class="sub" style="text-align:center;margin-top:2px">· puntual &nbsp;·&nbsp; número = multa del día &nbsp;·&nbsp; F falta &nbsp;·&nbsp; P permiso</p>';
+    $("#tablaReporte").className = "matriz";
+    const dd = diasDelMes();
+    if (!dd.length || !state.equipo.length){ th.innerHTML = ""; tb.innerHTML = sinDatos(2); return; }
+    th.innerHTML = '<tr><th class="fija">Analista</th>' + dd.map(f=>'<th>'+f.slice(8)+'</th>').join("") + '<th>Total</th></tr>';
+    const totDia = {}; let gran = 0;
+    state.equipo.forEach(a=>{
+      let tot = 0;
+      const celdas = dd.map(f=>{
+        const r = (state.dias[f]||{})[a.id], c = celdaMatriz(r);
+        if (r){ tot += deuda(r); totDia[f] = (totDia[f]||0) + deuda(r); }
+        return '<td class="'+c.cls+'">'+c.txt+'</td>';
+      }).join("");
+      gran += tot;
+      const tr = document.createElement("tr");
+      tr.innerHTML = '<td class="fija nm"></td>' + celdas + '<td><b>'+(tot ? tot.toFixed(2) : "—")+'</b></td>';
+      tr.querySelector(".nm").textContent = a.nombre;
+      tr.title = a.nombre;
+      tb.appendChild(tr);
+    });
+    tf.innerHTML = '<tr><td class="fija">Total</td>' +
+      dd.map(f=>'<td>'+(totDia[f] ? totDia[f].toFixed(0) : "")+'</td>').join("") +
+      '<td>'+gran.toFixed(2)+'</td></tr>';
+    return;
+  }
+
+  $("#tablaReporte").className = "";
+  th.innerHTML = '<tr><th>Día</th><th>Punt.</th><th>≤'+c+'</th><th>&gt;'+c+'</th><th>Falta</th><th>Perm.</th><th>Multas</th><th>Cobrado</th></tr>';
+  const dias = filasPorDia();
+  if (!dias.length){ tb.innerHTML = sinDatos(8); $("#detalleDia").innerHTML = ""; return; }
+  dias.forEach(f=>{
+    const tr = document.createElement("tr");
+    tr.style.cursor = "pointer";
+    if (f.fecha === diaDetalle) tr.className = "sel";
+    tr.innerHTML = '<td>'+fechaCorta(f.fecha).slice(0,5)+'</td><td>'+f.p+'</td><td>'+f.t1+'</td><td>'+f.t2+'</td><td>'+f.faltas+'</td><td>'+f.permisos+'</td><td>'+f.generado.toFixed(2)+'</td><td>'+f.cobrado.toFixed(2)+'</td>';
+    tr.addEventListener("click", ()=>{ diaDetalle = (diaDetalle === f.fecha ? null : f.fecha); pintarReporte(); });
+    tb.appendChild(tr);
+  });
+  const s = dias.reduce((o,f)=>({p:o.p+f.p,t1:o.t1+f.t1,t2:o.t2+f.t2,faltas:o.faltas+f.faltas,permisos:o.permisos+f.permisos,generado:o.generado+f.generado,cobrado:o.cobrado+f.cobrado}),{p:0,t1:0,t2:0,faltas:0,permisos:0,generado:0,cobrado:0});
+  tf.innerHTML = '<tr><td>Total</td><td>'+s.p+'</td><td>'+s.t1+'</td><td>'+s.t2+'</td><td>'+s.faltas+'</td><td>'+s.permisos+'</td><td>'+s.generado.toFixed(2)+'</td><td>'+s.cobrado.toFixed(2)+'</td></tr>';
+  pintarDetalleDia();
+}
+function pintarDetalleDia(){
+  const cont = $("#detalleDia");
+  if (!diaDetalle || !state.dias[diaDetalle]){
+    cont.innerHTML = '<p class="sub" style="text-align:center">Toca un día de la tabla para ver quiénes marcaron.</p>'; return;
+  }
+  const d = state.dias[diaDetalle];
+  const items = state.equipo.filter(a=>d[a.id]).map(a=>({ a, r:d[a.id] }));
+  const caja = document.createElement("div");
+  caja.className = "tarjeta";
+  caja.innerHTML = '<h2 style="margin-bottom:9px">Detalle del '+fechaCorta(diaDetalle)+'</h2>';
+  if (!items.length) caja.innerHTML += '<p class="sub" style="margin:0">Sin marcados ese día.</p>';
+  items.forEach(({a,r})=>{
+    const fila = document.createElement("div");
+    fila.className = "item";
+    const t = deuda(r);
+    fila.innerHTML = '<span><span class="dn"></span><small>'+ESTADOS[r.e].etq +
+      (r.e === "permiso" && r.tipo ? " · "+r.tipo : "") + (r.ts ? " · "+r.ts : "") +
+      (r.cond ? " · condonada" : "") + '</small></span>' +
+      '<b class="num" style="color:'+(t ? (r.p ? "var(--verde)" : "var(--rojo)") : "var(--gris)")+'">'+(t ? money(t)+(r.p ? " cobrada" : "") : "—")+'</b>';
+    fila.querySelector(".dn").textContent = a.nombre;
+    caja.appendChild(fila);
+  });
+  cont.innerHTML = ""; cont.appendChild(caja);
+}
+function reporteTexto(sep){
+  const c = state.cfg.corte;
+  if (modoRep === "analista"){
+    const filas = filasReporte();
+    const cab = ["Analista","Hasta "+c,"Despues "+c,"Faltas","Permisos","Recargos","Multas","Por cobrar"].join(sep);
+    return [cab].concat(filas.map(f=>[f.nombre,f.t1,f.t2,f.faltas,f.permisos,f.recargo.toFixed(2),f.generado.toFixed(2),f.pendiente.toFixed(2)].join(sep))).join("\n");
+  }
+  if (modoRep === "matriz" && diaSel){
+    const d = state.dias[diaSel] || {};
+    const cab = ["Analista","Condicion","Motivo","Hora","Multa","Cobrada"].join(sep);
+    return [cab].concat(state.equipo.map(a=>{
+      const r = d[a.id], t = r ? deuda(r) : 0;
+      return [a.nombre, r ? ESTADOS[r.e].etq : "Sin marcar", (r && r.tipo) ? r.tipo : "", (r && r.ts) ? r.ts : "", t.toFixed(2), (r && r.p) ? "si" : "no"].join(sep);
+    })).join("\n");
+  }
+  if (modoRep === "matriz"){
+    const dd = diasDelMes();
+    const cab = ["Analista"].concat(dd.map(f=>fechaCorta(f).slice(0,5))).concat(["Total"]).join(sep);
+    const filas = state.equipo.map(a=>{
+      let tot = 0;
+      const cel = dd.map(f=>{ const r = (state.dias[f]||{})[a.id]; if (r) tot += deuda(r); return textoCelda(r); });
+      return [a.nombre].concat(cel).concat([tot.toFixed(2)]).join(sep);
+    });
+    return [cab].concat(filas).join("\n");
+  }
+  const dias = filasPorDia();
+  const cab = ["Dia","Puntuales","Hasta "+c,"Despues "+c,"Faltas","Permisos","Multas","Cobrado"].join(sep);
+  return [cab].concat(dias.map(f=>[fechaCorta(f.fecha),f.p,f.t1,f.t2,f.faltas,f.permisos,f.generado.toFixed(2),f.cobrado.toFixed(2)].join(sep))).join("\n");
+}
+
+/* ================= CAMBIOS ================= */
+function pintarCambios(){
+  $("#subCambios").textContent = esAdmin()
+    ? "Autoriza o rechaza las correcciones que pida la encargada."
+    : "Tienes " + state.cfg.cambiosUsuario + " cambio libre por marcado. El siguiente lo autoriza el administrador.";
+  const cont = $("#listaSolicitudes");
+  if (!state.solicitudes.length){ cont.innerHTML = '<div class="tarjeta"><p class="sub" style="margin:0">No hay solicitudes registradas.</p></div>'; }
+  else{
+    cont.innerHTML = "";
+    state.solicitudes.slice(0,40).forEach(s=>{
+      const cls = s.estado === "pendiente" ? "pend" : (s.estado === "aprobada" ? "apro" : "rech");
+      const box = document.createElement("div");
+      box.className = "solic " + cls;
+      const esPermiso = s.clase === "permiso";
+      const detalle = esPermiso
+        ? "Permiso · <b>" + (s.tipo || "sin motivo") + "</b>"
+        : (s.actual ? ESTADOS[s.actual].etq : "sin marcar") + " → <b>" + ESTADOS[s.propuesto].etq + "</b>";
+      box.innerHTML =
+        '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">' +
+          '<b class="nm" style="font-size:14px"></b><span class="etq '+cls+'">'+s.estado+'</span></div>' +
+        '<div class="sub" style="margin:5px 0 0">'+fechaCorta(s.fecha)+' · '+detalle+'</div>' +
+        (s.motivo ? '<div class="sub" style="margin:3px 0 0">Sustento: <span class="mt"></span></div>' : '');
+      box.querySelector(".nm").textContent = s.nombre || "—";
+      if (s.motivo) box.querySelector(".mt").textContent = s.motivo;
+      if (s.estado === "pendiente" && esAdmin()){
+        const acc = document.createElement("div");
+        acc.style.cssText = "display:flex;gap:8px;margin-top:10px";
+        acc.innerHTML = '<button class="btn mini" data-ok>'+(esPermiso ? "Confirmar permiso" : "Autorizar")+'</button><button class="btn peligro mini" data-no>Rechazar</button>';
+        acc.querySelector("[data-ok]").addEventListener("click", ()=>{
+          if (!state.dias[s.fecha]) state.dias[s.fecha] = {};
+          const prev = state.dias[s.fecha][s.analistaId];
+          if (esPermiso){
+            state.dias[s.fecha][s.analistaId] = { e:"permiso", tipo:s.tipo, nota:s.motivo||"", m:0, p:false, v:prev?(prev.v||0):0, ts:ahoraHM(), quien:"admin", conf:true };
+            anotar((s.nombre||"—")+" · "+fechaCorta(s.fecha)+" · permiso confirmado ("+(s.tipo||"sin motivo")+")");
+          } else {
+            state.dias[s.fecha][s.analistaId] = { e:s.propuesto, m:montoDe(s.propuesto), p:prev?!!prev.p:false, v:prev?(prev.v||0):0, ts:ahoraHM(), quien:"admin" };
+            anotar((s.nombre||"—")+" · "+fechaCorta(s.fecha)+" · cambio autorizado a "+ESTADOS[s.propuesto].etq);
+          }
+          s.estado = "aprobada";
+          guardar(); pintarTodo(); toast(esPermiso ? "Permiso confirmado" : "Cambio autorizado");
+        });
+        acc.querySelector("[data-no]").addEventListener("click", ()=>{
+          s.estado = "rechazada";
+          if (esPermiso && state.dias[s.fecha] && state.dias[s.fecha][s.analistaId] && state.dias[s.fecha][s.analistaId].e === "permiso"){
+            delete state.dias[s.fecha][s.analistaId];
+            anotar((s.nombre||"—")+" · "+fechaCorta(s.fecha)+" · permiso rechazado, quedó sin marcar");
+          } else {
+            anotar((s.nombre||"—")+" · "+fechaCorta(s.fecha)+" · solicitud rechazada");
+          }
+          guardar(); pintarTodo();
+          toast(esPermiso ? "Permiso rechazado, marca el estado real en Hoy" : "Solicitud rechazada");
+        });
+        box.appendChild(acc);
+      }
+      cont.appendChild(box);
+    });
+  }
+  const bit = $("#listaBitacora");
+  if (!state.bitacora.length){ bit.innerHTML = '<p class="sub" style="margin:0">Sin movimientos todavía.</p>'; return; }
+  bit.innerHTML = "";
+  state.bitacora.slice(0,40).forEach(b=>{
+    const d = new Date(b.ts);
+    const li = document.createElement("div");
+    li.className = "item";
+    li.innerHTML = '<span><span class="tx" style="font-size:13px"></span><small></small></span>';
+    li.querySelector(".tx").textContent = b.txt;
+    li.querySelector("small").textContent = (isNaN(d) ? "" : d.toLocaleDateString("es-PE")+" "+d.toLocaleTimeString("es-PE",{hour:"2-digit",minute:"2-digit"})) + " · " + (b.rol === "admin" ? "administrador" : b.rol === "sistema" ? "automático" : "encargada");
+    bit.appendChild(li);
+  });
+}
+
+/* ================= AJUSTES ================= */
+function pintarAjustes(){
+  $("#ajustesAdmin").style.display = esAdmin() ? "block" : "none";
+  $("#ajustesUsuario").style.display = esAdmin() ? "none" : "block";
+  $("#txtSesion").textContent = esAdmin()
+    ? "Sesión de administrador: puedes autorizar cambios, editar el equipo, las reglas y los gastos."
+    : "Sesión de encargada: marcas la asistencia del día y registras los cobros.";
+  const c = state.cfg;
+  $("#reglasLectura").innerHTML =
+    '<div class="item"><span>Hasta las '+c.corte+'</span><b class="num">'+money(c.multa1)+'</b></div>' +
+    '<div class="item"><span>Después de las '+c.corte+'</span><b class="num">'+money(c.multa2)+'</b></div>' +
+    '<div class="item"><span>Falta</span><b class="num">'+money(c.multaFalta)+'</b></div>' +
+    '<div class="item"><span>Recargo si no se cobra el mismo día</span><b class="num">'+money(c.recargo)+'</b></div>' +
+    '<div class="item"><span>Permiso o comisión</span><b class="num">Sin multa</b></div>' +
+    '<div class="item"><span>Cambios libres por marcado</span><b class="num">'+c.cambiosUsuario+'</b></div>' +
+    (c.permisoAutoriza ? '<div class="item"><span>Los permisos que registres</span><b style="font-size:13px">Los confirma el administrador</b></div>' : '');
+  $("#estadoConexion").textContent =
+    backend === "claude"  ? "Guardando dentro de Claude. Al publicar la app en internet hay que conectar la base de datos."
+    : backend === "firebase" ? "Conectado a Firebase. Los celulares se actualizan solos cada pocos segundos."
+    : backend === "sheets"  ? "Conectado a Google Sheets. Los datos se guardan en tu hoja de cálculo."
+    : "Sin base de datos conectada: los cambios no se están guardando.";
+  $("#avisoPin").innerHTML = (c.pin === cfgDefault.pin)
+    ? '<div class="aviso">El PIN sigue siendo el de fábrica ('+cfgDefault.pin+'). Cámbialo para que nadie más entre como administrador.</div>' : "";
+  if (!esAdmin()) return;
+  const cont = $("#listaAjustesEquipo");
+  if (!state.equipo.length){ cont.innerHTML = '<p class="sub" style="margin:0">El equipo está vacío.</p>'; return; }
+  cont.innerHTML = '<p class="sub" style="margin:0 0 4px">'+state.equipo.length+' integrantes</p>';
+  state.equipo.forEach(a=>{
+    const row = document.createElement("div");
+    row.className = "item";
+    row.innerHTML = '<span class="nm"></span><button class="quitar">Quitar</button>';
+    row.querySelector(".nm").textContent = a.nombre;
+    row.querySelector("button").addEventListener("click", ()=>{
+      state.equipo = state.equipo.filter(x=>x.id !== a.id);
+      anotar("integrante retirado del equipo: "+a.nombre);
+      guardar(); pintarTodo(); toast("Integrante quitado");
+    });
+    cont.appendChild(row);
+  });
+}
+function volcarConfig(){
+  const c = state.cfg;
+  $("#cCorte").value = c.corte; $("#cMulta1").value = c.multa1; $("#cMulta2").value = c.multa2;
+  $("#cMultaFalta").value = c.multaFalta; $("#cRecargo").value = c.recargo; $("#cCambios").value = c.cambiosUsuario;
+  $("#cSaldoIni").value = c.saldoInicial;
+  $("#cAgencia").value = c.agencia; $("#cPin").value = c.pin;
+  $("#cPermisoAut").checked = !!c.permisoAutoriza;
+}
+function nombresDesdeTexto(txt){
+  return (txt||"").split(/\r?\n|\t|;/).map(s=>s.replace(/^\s*\d+\s*[).\-]?\s*/,"").trim()).filter(s=>s.length > 1);
+}
+function actualizarContador(){
+  const n = nombresDesdeTexto($("#pegarLista").value).length;
+  $("#contadorNombres").textContent = n ? (n + (n === 1 ? " nombre detectado" : " nombres detectados")) : "Sin nombres detectados todavía.";
+}
+
+/* ================= navegación ================= */
+function irTab(t){
+  document.querySelectorAll("section").forEach(s=>s.classList.remove("activa"));
+  $("#tab-"+t).classList.add("activa");
+  document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current", String(b.dataset.tab === t)));
+  window.scrollTo(0,0);
+}
+function pintarTodo(){ aplicarRecargos(); pintarCabecera(); pintarHoy(); pintarCaja(); pintarReporte(); pintarCambios(); pintarAjustes(); }
+
+/* ================= sesión ================= */
+function abrirHoja(){ $("#capaSesion").classList.add("ver"); $("#bloquePin").style.display = "none"; $("#pinError").style.display = "none"; $("#pinInput").value = ""; }
+function cerrarHoja(){ $("#capaSesion").classList.remove("ver"); }
+on("#btnRol","click", abrirHoja);
+on("#btnCambiarRol","click", abrirHoja);
+on("#cerrarHoja","click", cerrarHoja);
+on("#btnEntrarUsuario","click", ()=>{ rol = "usuario"; guardarRol(); cerrarHoja(); pintarTodo(); toast("Sesión de encargada"); });
+on("#btnMostrarPin","click", ()=>{ $("#bloquePin").style.display = "block"; $("#pinInput").focus(); });
+on("#btnValidarPin","click", ()=>{
+  if ($("#pinInput").value.trim() === String(state.cfg.pin)){
+    rol = "admin"; guardarRol(); cerrarHoja(); pintarTodo(); toast("Sesión de administrador");
+  } else { $("#pinError").style.display = "block"; }
+});
+on("#pinInput","keydown", e=>{ if (e.key === "Enter") $("#btnValidarPin").click(); });
+on("#capaSesion","click", e=>{ if (e.target.id === "capaSesion") cerrarHoja(); });
+
+/* ================= eventos ================= */
+document.querySelectorAll("nav button").forEach(b=> b.addEventListener("click", ()=>irTab(b.dataset.tab)));
+on("#fecha","change", ()=>{ abiertos = {}; draft = null; pintarHoy(); });
+on("#btnHoy","click", ()=>{ $("#fecha").value = isoHoy(); abiertos = {}; draft = null; pintarHoy(); });
+on("#buscar","input", pintarHoy);
+on("#btnTodosPuntuales","click", ()=>{
+  if (!state.equipo.length){ toast("Primero hay que cargar el equipo"); return; }
+  if (!esAdmin() && $("#fecha").value !== isoHoy()){ toast("Solo el administrador modifica días anteriores"); return; }
+  const d = dia(); let n = 0;
+  state.equipo.forEach(a=>{ if (!d[a.id]){ d[a.id] = { e:"puntual", m:0, p:false, v:0, ts:ahoraHM(), quien:rol }; n++; } });
+  if (n) anotar(n+" analistas marcados puntuales · "+fechaCorta($("#fecha").value));
+  guardar(); pintarTodo(); toast(n ? n+" marcados como puntuales" : "Ya estaban todos marcados");
+});
+on("#btnGasto","click", ()=>{
+  const monto = parseFloat($("#gMonto").value);
+  if (!monto || monto <= 0){ toast("Escribe el monto del gasto"); $("#gMonto").focus(); return; }
+  const desc = $("#gDesc").value.trim();
+  state.gastos.push({ id:uid(), fecha:$("#gFecha").value || isoHoy(), desc, monto });
+  anotar("gasto registrado: "+(desc||"sin concepto")+" "+money(monto));
+  $("#gMonto").value = ""; $("#gDesc").value = "";
+  guardar(); pintarTodo(); toast("Gasto registrado");
+});
+on("#btnGuardarCfg","click", ()=>{
+  state.cfg = {...state.cfg,
+    agencia:$("#cAgencia").value.trim() || cfgDefault.agencia,
+    corte:$("#cCorte").value || "08:45",
+    multa1:Number($("#cMulta1").value)||0,
+    multa2:Number($("#cMulta2").value)||0,
+    multaFalta:Number($("#cMultaFalta").value)||0,
+    recargo:Number($("#cRecargo").value)||0,
+    cambiosUsuario:Math.max(0, Math.min(3, Number($("#cCambios").value)||0)),
+    permisoAutoriza:$("#cPermisoAut").checked
+  };
+  anotar("reglas actualizadas");
+  guardar(); pintarTodo(); toast("Reglas guardadas");
+});
+on("#btnSaldoIni","click", ()=>{
+  const v = Math.max(0, Number($("#cSaldoIni").value)||0);
+  const antes = Number(state.cfg.saldoInicial)||0;
+  state.cfg.saldoInicial = v;
+  anotar("saldo inicial de la caja: "+money(antes)+" → "+money(v));
+  guardar(); pintarTodo(); toast("Saldo inicial guardado");
+});
+on("#btnGuardarPin","click", ()=>{
+  const p = $("#cPin").value.trim();
+  if (p.length < 4){ toast("El PIN debe tener al menos 4 dígitos"); return; }
+  state.cfg.pin = p; anotar("PIN de administrador actualizado");
+  guardar(); pintarAjustes(); toast("PIN guardado");
+});
+on("#pegarLista","input", actualizarContador);
+on("#btnAgregarLista","click", ()=>{
+  const nuevos = nombresDesdeTexto($("#pegarLista").value);
+  if (!nuevos.length){ toast("Pega la lista de nombres, uno por línea"); $("#pegarLista").focus(); return; }
+  let n = 0;
+  nuevos.forEach(nom=>{ if (!state.equipo.some(a=>a.nombre.toLowerCase() === nom.toLowerCase())){ state.equipo.push({ id:uid(), nombre:nom }); n++; } });
+  $("#pegarLista").value = ""; actualizarContador();
+  if (n) anotar(n+" integrantes agregados al equipo");
+  guardar(); pintarTodo();
+  toast(n ? n+" integrantes agregados" : "Esos nombres ya estaban en el equipo");
+});
+confirmable($("#btnReemplazarLista"), "Tocar de nuevo para reemplazar", ()=>{
+  const nuevos = nombresDesdeTexto($("#pegarLista").value);
+  if (!nuevos.length){ toast("Pega primero la lista de nombres"); return; }
+  state.equipo = nuevos.map(n=>({ id:uid(), nombre:n }));
+  $("#pegarLista").value = ""; actualizarContador();
+  anotar("equipo reemplazado: "+nuevos.length+" integrantes");
+  guardar(); pintarTodo(); toast("Equipo reemplazado: "+nuevos.length+" integrantes");
+});
+confirmable($("#btnBorrar"), "Tocar de nuevo para borrar", ()=>{
+  state.dias = {}; state.gastos = []; state.solicitudes = []; state.bitacora = [];
+  guardar(); pintarTodo(); toast("Registros borrados");
+});
+on("#btnConectar","click", ()=>{
+  $("#dbUrl").value = limpiarUrl(leerLocal("pinto_db_url")) || limpiarUrl(FIREBASE_URL);
+  $("#dbMsg").textContent = ""; $("#capaBase").classList.add("ver");
+});
+on("#cerrarBase","click", ()=>$("#capaBase").classList.remove("ver"));
+on("#capaBase","click", e=>{ if (e.target.id === "capaBase") $("#capaBase").classList.remove("ver"); });
+on("#btnProbarDB","click", async ()=>{
+  const u = limpiarUrl($("#dbUrl").value);
+  if (!/^https:\/\/.+/.test(u)){ $("#dbMsg").textContent = "La dirección debe empezar con https://"; return; }
+  $("#dbMsg").textContent = "Probando la conexión…";
+  const esSheets = u.includes("script.google.com");
+  try{
+    if (esSheets){
+      const res = await fetch(u, { cache:"no-store" });
+      if (!res.ok) throw new Error(res.status);
+      escribirLocal("pinto_sheets_url", u);
+      escribirLocal("pinto_db_url", "");
+    } else {
+      const res = await fetch(u + "/prueba.json", { method:"PUT", body:JSON.stringify(Date.now()), headers:{"Content-Type":"application/json"} });
+      if (!res.ok) throw new Error(res.status);
+      escribirLocal("pinto_db_url", u);
+      escribirLocal("pinto_sheets_url", "");
+    }
+    $("#dbMsg").textContent = "Conectado. Recargando…";
+    setTimeout(()=>location.reload(), 800);
+  }catch(e){
+    $("#dbMsg").textContent = "No se pudo conectar. Revisa que la URL sea correcta y esté publicada para cualquier persona.";
+  }
+});
+on("#btnGenerar","click", ()=>{ $("#respaldo").value = JSON.stringify(state); toast("Respaldo generado"); });
+on("#btnCopiarResp","click", async ()=>{
+  const t = $("#respaldo").value || JSON.stringify(state);
+  try{ await navigator.clipboard.writeText(t); toast("Respaldo copiado"); }
+  catch(e){ $("#respaldo").value = t; toast("Copia el texto del recuadro"); }
+});
+confirmable($("#btnRestaurar"), "Tocar de nuevo para restaurar", ()=>{
+  try{
+    const d = JSON.parse($("#respaldo").value);
+    if (!d || typeof d !== "object" || !("cfg" in d || "equipo" in d)) throw new Error("formato");
+    aplicarDatos(d); volcarConfig(); guardar(); pintarTodo(); toast("Respaldo restaurado");
+  }catch(e){ toast("Ese texto no es un respaldo válido"); }
+});
+document.querySelectorAll("#modoReporte button").forEach(b=> b.addEventListener("click", ()=>{ modoRep = b.dataset.modo; diaDetalle = null; diaSel = null; pintarReporte(); }));
+on("#mes","change", ()=>{ diaDetalle = null; diaSel = null; pintarReporte(); });
+on("#btnCopiar","click", async ()=>{
+  try{ await navigator.clipboard.writeText(reporteTexto("\t")); toast("Tabla copiada, pégala en Excel"); }
+  catch(e){ toast("El navegador bloqueó el copiado; usa CSV"); }
+});
+on("#btnCSV","click", ()=>{
+  try{
+    const blob = new Blob(["\ufeff"+reporteTexto(";")], { type:"text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "tardanzas_"+modoRep+"_"+($("#mes").value || "total")+".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+  }catch(e){ toast("No se pudo descargar; usa Copiar"); }
+});
+
+/* ================= arranque ================= */
+(async function(){
+  $("#fecha").value = isoHoy(); $("#gFecha").value = isoHoy(); $("#mes").value = isoHoy().slice(0,7);
+  await cargar();
+  volcarConfig(); pintarTodo(); actualizarContador();
+  if (backend === "firebase"){ timerSync = setInterval(sincronizar, 6000); }
+  if (!almacenOk){
+    const av = document.createElement("div");
+    av.className = "aviso error";
+    av.innerHTML = (backend === "memoria")
+      ? 'Falta conectar la base de datos: los cambios no se guardan. <button class="enlace" id="avConectar" style="color:var(--rojo)">Conectar ahora</button>'
+      : "No se pudo llegar a la base de datos. Revisa la conexión a internet y vuelve a abrir la app.";
+    $("#tab-hoy").prepend(av);
+    const b = $("#avConectar");
+    if (b) b.addEventListener("click", ()=>{ $("#dbUrl").value = limpiarUrl(leerLocal("pinto_db_url")); $("#capaBase").classList.add("ver"); });
+  }
+})();
+</script>
+</body>
+</html>
