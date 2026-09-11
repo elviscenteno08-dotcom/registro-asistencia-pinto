@@ -535,16 +535,12 @@ async function cargar(){
   if (su){
     backend = "sheets";
     try{
-      // JSONP: evita el bloqueo CORS en GET
-      const d = await new Promise((resolve, reject) => {
-        const cb = "cb_" + Math.random().toString(36).slice(2);
-        const sc = document.createElement("script");
-        const timer = setTimeout(() => { reject(new Error("timeout")); sc.remove(); delete window[cb]; }, 10000);
-        window[cb] = data => { clearTimeout(timer); sc.remove(); delete window[cb]; resolve(data); };
-        sc.src = su + "?callback=" + cb;
-        sc.onerror = () => { clearTimeout(timer); reject(new Error("script error")); };
-        document.head.appendChild(sc);
-      });
+      // allorigins.win añade cabeceras CORS a cualquier URL pública
+      const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(su);
+      const res = await fetch(proxyUrl, { cache:"no-store" });
+      if (!res.ok) throw new Error(res.status);
+      const wrap = await res.json();
+      const d = JSON.parse(wrap.contents);
       if (d && d.cfg) aplicarDatos(d);
       almacenOk = true;
     }catch(e){ almacenOk = false; }
