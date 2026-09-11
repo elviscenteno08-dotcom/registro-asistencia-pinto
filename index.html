@@ -535,14 +535,22 @@ async function cargar(){
   if (su){
     backend = "sheets";
     try{
-      // allorigins.win añade cabeceras CORS a cualquier URL pública
-      const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(su);
-      const res = await fetch(proxyUrl, { cache:"no-store" });
-      if (!res.ok) throw new Error(res.status);
-      const wrap = await res.json();
-      const d = JSON.parse(wrap.contents);
-      if (d && d.cfg) aplicarDatos(d);
+      // 1. cargar desde localStorage inmediatamente (sin esperar red)
+      const local = leerLocal("pinto_data");
+      if (local){ try{ aplicarDatos(JSON.parse(local)); }catch(e){} }
+      // 2. intentar sincronizar desde Sheets en segundo plano
       almacenOk = true;
+      try{
+        const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(su);
+        const res = await fetch(proxyUrl, { cache:"no-store" });
+        if (res.ok){
+          const wrap = await res.json();
+          if (wrap && wrap.contents){
+            const d = JSON.parse(wrap.contents);
+            if (d && d.cfg){ aplicarDatos(d); escribirLocal("pinto_data", JSON.stringify(d)); }
+          }
+        }
+      }catch(e){ /* Sheets no disponible, usamos lo local */ }
     }catch(e){ almacenOk = false; }
     return;
   }
@@ -592,11 +600,13 @@ function guardar(){
     try{
       if (backend === "claude"){ await window.storage.set(KEY, cuerpo, COMPARTIDO); }
       else if (backend === "sheets"){
-        // POST con no-cors: el navegador no puede leer la respuesta pero sí la envía
-        await fetch(sheetsUrl(), {
+        // siempre guardar en localStorage primero (instantáneo)
+        escribirLocal("pinto_data", cuerpo);
+        // enviar a Sheets en segundo plano
+        fetch(sheetsUrl(), {
           method:"POST", mode:"no-cors",
           body:cuerpo, headers:{"Content-Type":"text/plain"}
-        });
+        }).catch(()=>{});
       } else {
         const res = await fetch(urlDB(), { method:"PUT", body:cuerpo, headers:{"Content-Type":"application/json"} });
         if (!res.ok) throw new Error("respuesta " + res.status);
