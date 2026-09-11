@@ -535,9 +535,16 @@ async function cargar(){
   if (su){
     backend = "sheets";
     try{
-      const res = await fetch(su + "?action=get", { cache:"no-store" });
-      if (!res.ok) throw new Error(res.status);
-      const d = await res.json();
+      // JSONP: evita el bloqueo CORS en GET
+      const d = await new Promise((resolve, reject) => {
+        const cb = "cb_" + Math.random().toString(36).slice(2);
+        const sc = document.createElement("script");
+        const timer = setTimeout(() => { reject(new Error("timeout")); sc.remove(); delete window[cb]; }, 10000);
+        window[cb] = data => { clearTimeout(timer); sc.remove(); delete window[cb]; resolve(data); };
+        sc.src = su + "?callback=" + cb;
+        sc.onerror = () => { clearTimeout(timer); reject(new Error("script error")); };
+        document.head.appendChild(sc);
+      });
       if (d && d.cfg) aplicarDatos(d);
       almacenOk = true;
     }catch(e){ almacenOk = false; }
@@ -589,11 +596,11 @@ function guardar(){
     try{
       if (backend === "claude"){ await window.storage.set(KEY, cuerpo, COMPARTIDO); }
       else if (backend === "sheets"){
-        const encoded = encodeURIComponent(cuerpo);
-        const res = await fetch(sheetsUrl() + "?action=set&data=" + encoded, { cache:"no-store" });
-        if (!res.ok) throw new Error("respuesta " + res.status);
-        const rj = await res.json();
-        if (!rj || !rj.ok) throw new Error("sheets error");
+        // POST con no-cors: el navegador no puede leer la respuesta pero sí la envía
+        await fetch(sheetsUrl(), {
+          method:"POST", mode:"no-cors",
+          body:cuerpo, headers:{"Content-Type":"text/plain"}
+        });
       } else {
         const res = await fetch(urlDB(), { method:"PUT", body:cuerpo, headers:{"Content-Type":"application/json"} });
         if (!res.ok) throw new Error("respuesta " + res.status);
