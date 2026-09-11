@@ -492,7 +492,7 @@ function anotar(txt, quien){
 /* Dirección de la Realtime Database de Firebase. Al dejarla escrita aquí,
    nadie del equipo tiene que configurar nada: basta con abrir el enlace. */
 const FIREBASE_URL = "";
-const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxaYemG8HBZvTDYvRptWKhprLhdNgKugoFIETxw4C16irFJl5cjF6oTpAh9v7-2v8zb1Q/exec";
+const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxROuN0zd8rUf2g57HoPg4ZoHsGbEzbOK7ZyOx6nqr8A2iTHFBoNIPlJixDpsvHfs-P/exec";
 function sheetsUrl(){ return leerLocal("pinto_sheets_url") || SHEETS_URL; }
 let backend = "memoria";           // claude | firebase | memoria
 let pendienteGuardar = null, ultimoEscrito = 0, ultimoRemoto = "", timerSync = null;
