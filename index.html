@@ -535,10 +535,10 @@ async function cargar(){
   if (su){
     backend = "sheets";
     try{
-      const res = await fetch(su, { cache:"no-store" });
+      const res = await fetch(su + "?action=get", { cache:"no-store" });
       if (!res.ok) throw new Error(res.status);
       const d = await res.json();
-      if (d) aplicarDatos(d);
+      if (d && d.cfg) aplicarDatos(d);
       almacenOk = true;
     }catch(e){ almacenOk = false; }
     return;
@@ -589,8 +589,11 @@ function guardar(){
     try{
       if (backend === "claude"){ await window.storage.set(KEY, cuerpo, COMPARTIDO); }
       else if (backend === "sheets"){
-        const res = await fetch(sheetsUrl(), { method:"POST", body:cuerpo, headers:{"Content-Type":"application/json"} });
+        const encoded = encodeURIComponent(cuerpo);
+        const res = await fetch(sheetsUrl() + "?action=set&data=" + encoded, { cache:"no-store" });
         if (!res.ok) throw new Error("respuesta " + res.status);
+        const rj = await res.json();
+        if (!rj || !rj.ok) throw new Error("sheets error");
       } else {
         const res = await fetch(urlDB(), { method:"PUT", body:cuerpo, headers:{"Content-Type":"application/json"} });
         if (!res.ok) throw new Error("respuesta " + res.status);
