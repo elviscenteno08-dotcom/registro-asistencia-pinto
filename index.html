@@ -946,7 +946,7 @@ function pintarResumenDia(){
 
 /* ================= CAJA ================= */
 function pintarCaja(){
-  $("#cardGasto").style.display = esAdmin() ? "block" : "none";
+  $("#cardGasto").style.display = "block";
   const hoy = isoHoy(), dh = state.dias[hoy] || {};
   let pendHoy = 0, nHoy = 0;
   for (const id in dh){ const r = dh[id]; if (!r.p && deuda(r) > 0){ pendHoy += deuda(r); nHoy++; } }
