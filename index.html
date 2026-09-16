@@ -434,9 +434,14 @@ const KEY = "asistencia_agencia_pinto_v1";
 const KEY_ROL = "rol_local_pinto";
 const COMPARTIDO = true;
 
+/* ======================================================
+   FIREBASE — backend único y definitivo
+   ====================================================== */
+/* ================= configuración y estado global ================= */
 const cfgDefault = {
   entidad:"Registro de Asistencia", agencia:"Agencia Pinto", corte:"08:45",
-  multa1:10, multa2:20, multaFalta:0, recargo:10, saldoInicial:0, cambiosUsuario:1, pin:"2026", permisoAutoriza:true
+  multa1:10, multa2:20, multaFalta:0, recargo:10, saldoInicial:0,
+  cambiosUsuario:1, pin:"2026", permisoAutoriza:true
 };
 const PERMISOS = ["Permiso particular","Comisión de servicio","Capacitación","Vacaciones","Descanso médico","Otro"];
 const ESTADOS = {
@@ -448,65 +453,26 @@ const ESTADOS = {
 };
 let state = { cfg:{...cfgDefault}, equipo:[], dias:{}, gastos:[], solicitudes:[], bitacora:[] };
 let rol = "usuario";
-let almacenOk = true;
-let abiertos = {};      // filas expandidas
-let draft = null;         // solicitud de cambio en preparación {id, estado}
-let permisoDraft = null;  // permiso en preparación {id, tipo, nota}
-let ajusteDraft = null;   // ajuste de multa {id, monto, mot}
+let abiertos = {};
+let draft = null;
+let permisoDraft = null;
+let ajusteDraft = null;
 let modoRep = "analista", diaDetalle = null, diaSel = null;
 
-const $ = s => document.querySelector(s);
-const money = n => "S/ " + (Number(n)||0).toFixed(2);
-const montoCorto = n => "S/ " + ((Number(n)||0) % 1 === 0 ? (Number(n)||0) : (Number(n)||0).toFixed(2));
-const deuda = r => (Number(r.m)||0) + (Number(r.rec)||0);
-const uid = () => Math.random().toString(36).slice(2,9);
-const esAdmin = () => rol === "admin";
-function isoHoy(d){ d = d||new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
-function fechaCorta(iso){ const p = String(iso).split("-"); return p[2]+"/"+p[1]+"/"+p[0]; }
-function ahoraHM(){ const d = new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
-function on(sel, ev, fn){ const el = $(sel); if (el) el.addEventListener(ev, fn); }
-
-let tToast;
-function toast(msg){ const t = $("#toast"); t.textContent = msg; t.classList.add("ver"); clearTimeout(tToast); tToast = setTimeout(()=>t.classList.remove("ver"), 2600); }
-function confirmable(btn, txtConfirmar, accion){
-  if (!btn) return;
-  let armado = false, tid; const original = btn.textContent;
-  btn.addEventListener("click", ()=>{
-    if (!armado){ armado = true; btn.textContent = txtConfirmar; tid = setTimeout(()=>{ armado = false; btn.textContent = original; }, 4000); return; }
-    clearTimeout(tid); armado = false; btn.textContent = original; accion();
-  });
-}
-function montoDe(e){
-  const c = state.cfg;
-  if (e === "t1") return Number(c.multa1)||0;
-  if (e === "t2") return Number(c.multa2)||0;
-  if (e === "falta") return Number(c.multaFalta)||0;
-  return 0;
-}
-function anotar(txt, quien){
-  state.bitacora.unshift({ ts:new Date().toISOString(), rol:quien||rol, txt });
-  if (state.bitacora.length > 250) state.bitacora.length = 250;
-}
-
-/* ================= almacenamiento ================= */
-/* Dirección de la Realtime Database de Firebase. Al dejarla escrita aquí,
-   nadie del equipo tiene que configurar nada: basta con abrir el enlace. */
-const FIREBASE_URL = "";
-const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxROuN0zd8rUf2g57HoPg4ZoHsGbEzbOK7ZyOx6nqr8A2iTHFBoNIPlJixDpsvHfs-P/exec";
-function sheetsUrl(){ return leerLocal("pinto_sheets_url") || SHEETS_URL; }
-let backend = "memoria";           // claude | firebase | memoria
-let pendienteGuardar = null, ultimoEscrito = 0, ultimoRemoto = "", timerSync = null;
+const FIREBASE_URL = "https://control-tardanzas-pinto-default-rtdb.firebaseio.com";
+let backend = "memoria";
+let almacenOk = false;
+let pendienteGuardar = null;
+let ultimoEscrito = 0;
+let ultimoRemoto = "";
+let timerSync = null;
 
 function leerLocal(k){ try{ return window.localStorage.getItem(k); }catch(e){ return null; } }
 function escribirLocal(k,v){ try{ window.localStorage.setItem(k,v); }catch(e){} }
 function limpiarUrl(u){ return (u||"").trim().replace(/\/+$/,""); }
-function urlDB(){
-  let u = "";
-  try{ u = limpiarUrl(new URLSearchParams(location.search).get("db")); }catch(e){ u = ""; }
-  if (!u) u = limpiarUrl(leerLocal("pinto_db_url"));
-  if (!u) u = limpiarUrl(FIREBASE_URL);
-  return u ? u + "/pinto.json" : "";
-}
+
+function fbUrl(){ return FIREBASE_URL + "/pinto.json"; }
+
 function aplicarDatos(d){
   if (!d || typeof d !== "object") return;
   state = {
@@ -516,7 +482,9 @@ function aplicarDatos(d){
   };
   migrar();
 }
+
 async function cargar(){
+  /* ---- dentro de Claude: usar window.storage ---- */
   if (window.storage){
     backend = "claude"; almacenOk = true;
     try{
@@ -529,80 +497,26 @@ async function cargar(){
     try{ const r = await window.storage.get(KEY_ROL, false); if (r && r.value === "admin") rol = "admin"; }catch(e){}
     return;
   }
-  if (leerLocal("pinto_rol") === "admin") rol = "admin";
-  try{ const q = limpiarUrl(new URLSearchParams(location.search).get("db")); if (q) escribirLocal("pinto_db_url", q); }catch(e){}
-  const su = sheetsUrl();
-  if (su){
-    backend = "sheets";
-    try{
-      // Cargar localStorage primero (respuesta inmediata)
-      const loc = leerLocal("pinto_data");
-      if (loc){ try{ aplicarDatos(JSON.parse(loc)); }catch(e){} }
-      almacenOk = true;
-      // Sincronizar con Sheets en segundo plano via JSONP
-      (function() {
-        const cbName = "gs_cb_" + Date.now();
-        const tag = document.createElement("script");
-        const timer = setTimeout(() => { tag.remove(); try{ delete window[cbName]; }catch(e){} }, 15000);
-        window[cbName] = function(data) {
-          clearTimeout(timer); tag.remove(); try{ delete window[cbName]; }catch(e){}
-          if (data && data.cfg){
-            const local = leerLocal("pinto_data");
-            const localObj = local ? JSON.parse(local) : null;
-            // usar el más reciente comparando bitácoras
-            const remLen = (data.bitacora||[]).length;
-            const locLen = localObj ? (localObj.bitacora||[]).length : 0;
-            if (remLen >= locLen){
-              aplicarDatos(data);
-              escribirLocal("pinto_data", JSON.stringify(data));
-              volcarConfig(); pintarTodo();
-            }
-          }
-        };
-        tag.src = su + "?callback=" + cbName + "&t=" + Date.now();
-        tag.onerror = function(){ clearTimeout(timer); tag.remove(); try{ delete window[cbName]; }catch(e){} };
-        document.head.appendChild(tag);
-      })();
-    }catch(e){ almacenOk = false; }
-    return;
-  }
-  const u = urlDB();
-  if (!u){ backend = "memoria"; almacenOk = false; return; }
+
+  /* ---- fuera de Claude: Firebase ---- */
+  if (leerLocal(KEY_ROL) === "admin") rol = "admin";
   backend = "firebase";
   try{
-    const res = await fetch(u, { cache:"no-store" });
-    if (!res.ok) throw new Error("respuesta " + res.status);
-    const txt = await res.text(); ultimoRemoto = txt;
-    aplicarDatos(JSON.parse(txt)); almacenOk = true;
-  }catch(e){ almacenOk = false; }
-}
-function ocupado(){ return !!(draft || permisoDraft); }
-async function sincronizar(){
-  if (backend !== "firebase" || !almacenOk) return;
-  if (pendienteGuardar || Date.now() - ultimoEscrito < 3000 || ocupado()) return;
-  try{
-    const res = await fetch(urlDB(), { cache:"no-store" });
-    if (!res.ok) return;
+    const res = await fetch(fbUrl(), { cache:"no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
     const txt = await res.text();
-    if (txt === ultimoRemoto) return;
     ultimoRemoto = txt;
-    aplicarDatos(JSON.parse(txt));
-    const el = document.activeElement;
-    const escribiendo = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA") && $("#tab-ajustes").classList.contains("activa");
-    if (!escribiendo) volcarConfig();
-    pintarTodo(); marcarEstado("Actualizado");
-  }catch(e){}
-}
-function migrar(){
-  for (const f in state.dias) for (const id in state.dias[f]){
-    const r = state.dias[f][id];
-    if (r.e === "tarde"){ r.e = (r.t === "tarde2" ? "t2" : "t1"); delete r.t; delete r.h; delete r.min; }
-    if (typeof r.v !== "number") r.v = 0;
-    if (r.e === "permiso" && typeof r.conf === "undefined") r.conf = true;
+    const d = JSON.parse(txt);
+    if (d) aplicarDatos(d);
+    almacenOk = true;
+  }catch(e){
+    almacenOk = false;
+    console.error("Firebase cargar:", e.message);
   }
 }
+
 function guardar(){
-  if (backend === "memoria" || !almacenOk) return;
+  if (backend === "memoria") return;
   marcarEstado("Guardando…");
   clearTimeout(pendienteGuardar);
   pendienteGuardar = setTimeout(async ()=>{
@@ -610,27 +524,98 @@ function guardar(){
     const cuerpo = JSON.stringify(state);
     ultimoEscrito = Date.now();
     try{
-      if (backend === "claude"){ await window.storage.set(KEY, cuerpo, COMPARTIDO); }
-      else if (backend === "sheets"){
-        escribirLocal("pinto_data", cuerpo);
-        const res = await fetch(sheetsUrl(), {
-          method:"POST", mode:"no-cors",
-          body:cuerpo, headers:{"Content-Type":"text/plain"}
-        });
+      if (backend === "claude"){
+        await window.storage.set(KEY, cuerpo, COMPARTIDO);
       } else {
-        const res = await fetch(urlDB(), { method:"PUT", body:cuerpo, headers:{"Content-Type":"application/json"} });
-        if (!res.ok) throw new Error("respuesta " + res.status);
+        /* Firebase PUT — reemplaza el nodo completo */
+        const res = await fetch(fbUrl(), {
+          method:"PUT", body:cuerpo,
+          headers:{"Content-Type":"application/json"}
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
         ultimoRemoto = cuerpo;
+        almacenOk = true;
       }
       ultimoEscrito = Date.now();
       marcarEstado("Guardado");
-    }catch(e){ marcarEstado("Sin guardar"); }
+    }catch(e){
+      almacenOk = false;
+      marcarEstado("Sin guardar");
+      console.error("Firebase guardar:", e.message);
+    }
   }, 500);
 }
+
 async function guardarRol(){
-  if (backend === "claude"){ try{ await window.storage.set(KEY_ROL, rol, false); }catch(e){} }
-  else escribirLocal("pinto_rol", rol);
+  if (backend === "claude"){
+    try{ await window.storage.set(KEY_ROL, rol, false); }catch(e){}
+  } else {
+    escribirLocal(KEY_ROL, rol);
+  }
 }
+
+async function sincronizar(){
+  if (backend !== "firebase" || !almacenOk) return;
+  if (pendienteGuardar || Date.now() - ultimoEscrito < 3000) return;
+  try{
+    const res = await fetch(fbUrl(), { cache:"no-store" });
+    if (!res.ok) return;
+    const txt = await res.text();
+    if (txt === ultimoRemoto) return;
+    ultimoRemoto = txt;
+    aplicarDatos(JSON.parse(txt));
+    const el = document.activeElement;
+    const escribiendo = el && (el.tagName==="INPUT"||el.tagName==="TEXTAREA") && $("#tab-ajustes").classList.contains("activa");
+    if (!escribiendo) volcarConfig();
+    pintarTodo(); marcarEstado("Actualizado");
+  }catch(e){ console.error("sync:", e.message); }
+}
+
+/* ================= utilidades ================= */
+const $ = sel => document.querySelector(sel);
+const money = n => "S/ " + (Number(n)||0).toFixed(2);
+const montoCorto = n => "S/ " + ((Number(n)||0) % 1 === 0 ? (Number(n)||0) : (Number(n)||0).toFixed(2));
+const deuda = r => (Number(r.m)||0) + (Number(r.rec)||0);
+const uid = () => Math.random().toString(36).slice(2,9);
+const on = (sel, ev, fn) => { const el = $(sel); if (el) el.addEventListener(ev, fn); };
+function isoHoy(d){ d=d||new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function fechaCorta(iso){ const p=String(iso).split("-"); return p[2]+"/"+p[1]+"/"+p[0]; }
+function ahoraHM(){ const d=new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+
+let tToast;
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("ver"); clearTimeout(tToast); tToast=setTimeout(()=>t.classList.remove("ver"),2600); }
+function confirmable(btn,txtConfirmar,accion){
+  if (!btn) return;
+  let armado=false,tid; const original=btn.textContent;
+  btn.addEventListener("click",()=>{
+    if (!armado){ armado=true; btn.textContent=txtConfirmar; tid=setTimeout(()=>{ armado=false; btn.textContent=original; },4000); return; }
+    clearTimeout(tid); armado=false; btn.textContent=original; accion();
+  });
+}
+
+function esAdmin(){ return rol === "admin"; }
+function montoDe(e){
+  const c = state.cfg;
+  if (e === "t1") return Number(c.multa1)||0;
+  if (e === "t2") return Number(c.multa2)||0;
+  if (e === "falta") return Number(c.multaFalta)||0;
+  return 0;
+}
+
+function anotar(txt, quien){
+  state.bitacora.unshift({ ts:new Date().toISOString(), rol:quien||rol, txt });
+  if (state.bitacora.length > 250) state.bitacora.length = 250;
+}
+function migrar(){
+  for (const f in state.dias) for (const id in state.dias[f]){
+    const r = state.dias[f][id];
+    if (r.e === "tarde"){ r.e = (r.t === "tarde2" ? "t2" : "t1"); delete r.t; delete r.h; delete r.min; }
+    if (typeof r.v !== "number") r.v = 0;
+    if (r.e === "permiso" && typeof r.conf === "undefined") r.conf = true;
+    if (r.e === "permiso" && !r.fijo) r.rec = 0;
+  }
+}
+
 function marcarEstado(txt){
   const el = $("#estadoGuardado"); if (!el) return;
   el.textContent = txt;
@@ -1319,10 +1304,9 @@ function pintarAjustes(){
     '<div class="item"><span>Cambios libres por marcado</span><b class="num">'+c.cambiosUsuario+'</b></div>' +
     (c.permisoAutoriza ? '<div class="item"><span>Los permisos que registres</span><b style="font-size:13px">Los confirma el administrador</b></div>' : '');
   $("#estadoConexion").textContent =
-    backend === "claude"  ? "Guardando dentro de Claude. Al publicar la app en internet hay que conectar la base de datos."
-    : backend === "firebase" ? "Conectado a Firebase. Los celulares se actualizan solos cada pocos segundos."
-    : backend === "sheets"  ? "Conectado a Google Sheets. Los datos se guardan en tu hoja de cálculo."
-    : "Sin base de datos conectada: los cambios no se están guardando.";
+    backend === "claude"  ? "Guardando dentro de Claude."
+    : backend === "firebase" ? "✓ Conectado a Firebase. Los cambios se guardan y se ven en todos los celulares."
+    : "Sin base de datos — los cambios no se están guardando.";
   $("#avisoPin").innerHTML = (c.pin === cfgDefault.pin)
     ? '<div class="aviso">El PIN sigue siendo el de fábrica ('+cfgDefault.pin+'). Cámbialo para que nadie más entre como administrador.</div>' : "";
   if (!esAdmin()) return;
