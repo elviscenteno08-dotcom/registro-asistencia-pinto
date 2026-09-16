@@ -357,7 +357,7 @@
         <div class="tarjeta">
           <div id="avisoPin"></div>
           <div class="campo"><label for="cPin">PIN de administrador</label><input type="text" id="cPin" inputmode="numeric" maxlength="8" autocomplete="off"></div>
-          <button class="btn sec ancho" id="btnGuardarPin" style="margin-bottom:12px">Guardar PIN</button>
+          <button class="btn sec ancho" id="btnGuardarPin" style="margin-bottom:12px">Guardar PIN de administrador</button>
           <button class="btn peligro ancho" id="btnBorrar">Borrar todos los registros</button>
         </div>
 
@@ -377,6 +377,17 @@
       <div id="ajustesUsuario" style="display:none">
         <h2>Reglas vigentes</h2>
         <div class="tarjeta"><div id="reglasLectura"></div></div>
+
+        <h2>Tu PIN de acceso</h2>
+        <div class="tarjeta">
+          <p class="sub" style="margin-bottom:11px">Cambia tu clave personal de encargada. El PIN por defecto es <b>1234</b>.</p>
+          <div class="campo"><label for="uPin">PIN actual</label><input type="password" id="uPin" inputmode="numeric" maxlength="8" autocomplete="off"></div>
+          <div class="campo"><label for="uPinNew">PIN nuevo</label><input type="password" id="uPinNew" inputmode="numeric" maxlength="8" autocomplete="off"></div>
+          <div class="campo"><label for="uPinNew2">Repetir PIN nuevo</label><input type="password" id="uPinNew2" inputmode="numeric" maxlength="8" autocomplete="off"></div>
+          <p class="sub" id="uPinMsg" style="color:var(--rojo);margin:0 0 8px;display:none"></p>
+          <button class="btn sec ancho" id="btnCambiarPinEnc">Guardar nuevo PIN</button>
+        </div>
+
         <p class="sub">Para cambiar reglas, el equipo o los montos, entra como administrador desde el botón superior.</p>
       </div>
 
@@ -406,7 +417,7 @@
   <div class="hoja">
     <h3>¿Quién va a registrar?</h3>
     <p>El administrador autoriza cambios y edita reglas. La encargada marca la asistencia del día.</p>
-    <button class="btn sec ancho" id="btnEntrarUsuario" style="margin-bottom:10px">Entrar como encargada</button>
+    <button class="btn sec ancho" id="btnEntrarUsuario" style="margin-bottom:10px">Entrar como encargada (PIN)</button>
     <div id="bloquePin" style="display:none;margin-bottom:10px">
       <div class="campo"><label for="pinInput">PIN de administrador</label><input type="password" id="pinInput" inputmode="numeric" maxlength="8" autocomplete="off"></div>
       <button class="btn roja ancho" id="btnValidarPin">Entrar</button>
@@ -594,10 +605,12 @@ function confirmable(btn,txtConfirmar,accion){
 }
 
 function esAdmin(){ return rol === "admin"; }
-function montoDe(e){
+function montoDe(e, id){
   const c = state.cfg;
-  if (e === "t1") return Number(c.multa1)||0;
-  if (e === "t2") return Number(c.multa2)||0;
+  const a = id ? state.equipo.find(x=>x.id===id) : null;
+  const esPrac = a && (a.cargo||"Analista") === "Practicante";
+  if (e === "t1") return esPrac ? Math.max(0.5, Math.round(((Number(c.multa1)||0)/2)*2)/2) : Number(c.multa1)||0;
+  if (e === "t2") return esPrac ? Math.max(0.5, Math.round(((Number(c.multa2)||0)/2)*2)/2) : Number(c.multa2)||0;
   if (e === "falta") return Number(c.multaFalta)||0;
   return 0;
 }
@@ -693,7 +706,7 @@ function aplicarEstado(id, nuevo, porAdmin){
   const prev = d[id];
   const esCambio = !!prev;
   d[id] = {
-    e:nuevo, m:montoDe(nuevo), p:prev ? !!prev.p : false,
+    e:nuevo, m:montoDe(nuevo,id), p:prev ? !!prev.p : false,
     v:prev ? (porAdmin ? (prev.v||0) : (prev.v||0)+1) : 0,
     ts:ahoraHM(), quien:rol
   };
@@ -776,8 +789,8 @@ function pintarHoy(){
       const g = document.createElement("div");
       g.className = "rejilla";
       const corte = state.cfg.corte;
-      const et1 = (Number(state.cfg.multa1)||0) > 0 ? montoCorto(state.cfg.multa1) : "Hasta "+corte;
-      const et2 = (Number(state.cfg.multa2)||0) > 0 ? montoCorto(state.cfg.multa2) : "Desp. "+corte;
+      const et1 = (Number(state.cfg.multa1)||0) > 0 ? montoCorto(montoDe("t1",a.id)) : "Hasta "+corte;
+      const et2 = (Number(state.cfg.multa2)||0) > 0 ? montoCorto(montoDe("t2",a.id)) : "Desp. "+corte;
       g.innerHTML =
         '<button class="b-puntual" title="Llegó a la hora" aria-pressed="'+!!(r&&r.e==="puntual")+'">Puntual</button>' +
         '<button class="b-t1" title="Llegó hasta las '+corte+'" aria-pressed="'+!!(r&&r.e==="t1")+'">'+et1+'</button>' +
@@ -1316,8 +1329,12 @@ function pintarAjustes(){
   state.equipo.forEach(a=>{
     const row = document.createElement("div");
     row.className = "item";
-    row.innerHTML = '<span class="nm"></span><button class="quitar">Quitar</button>';
-    row.querySelector(".nm").textContent = a.nombre;
+    const cargo = a.cargo||"Analista";
+    row.innerHTML = '<div style="min-width:0"><span class="nm"></span></div><div style="display:flex;gap:6px;align-items:center"><select class="sel-cargo" style="padding:6px 8px;font-size:12px;border-radius:8px;border:1px solid var(--linea)"></select><button class="quitar">Quitar</button></div>';
+    row.querySelector(".nm").textContent = a.nombre + (cargo==="Practicante" ? " 🎓" : "");
+    const sel = row.querySelector(".sel-cargo");
+    ["Analista","Practicante"].forEach(c=>{ const o=document.createElement("option"); o.value=c; o.textContent=c; if(c===cargo) o.selected=true; sel.appendChild(o); });
+    sel.addEventListener("change",()=>{ a.cargo=sel.value; anotar("cargo de "+a.nombre+" cambiado a "+sel.value); guardar(); pintarTodo(); });
     row.querySelector("button").addEventListener("click", ()=>{
       state.equipo = state.equipo.filter(x=>x.id !== a.id);
       anotar("integrante retirado del equipo: "+a.nombre);
@@ -1334,8 +1351,17 @@ function volcarConfig(){
   $("#cAgencia").value = c.agencia; $("#cPin").value = c.pin;
   $("#cPermisoAut").checked = !!c.permisoAutoriza;
 }
+const CARGOS_VALIDOS = ["Analista","Practicante"];
 function nombresDesdeTexto(txt){
-  return (txt||"").split(/\r?\n|\t|;/).map(s=>s.replace(/^\s*\d+\s*[).\-]?\s*/,"").trim()).filter(s=>s.length > 1);
+  return (txt||"").split(/\r?\n/).map(linea=>{
+    linea = linea.replace(/^\s*\d+\s*[).\-]?\s*/,"").trim();
+    if (!linea || linea.length < 2) return null;
+    const partes = linea.split(/[;	]/).map(p=>p.trim()).filter(Boolean);
+    const nombre = partes[0];
+    if (CARGOS_VALIDOS.some(c=>c.toLowerCase()===nombre.toLowerCase())) return null;
+    const cargo = CARGOS_VALIDOS.find(c=>partes.slice(1).some(p=>p.toLowerCase()===c.toLowerCase())) || "Analista";
+    return { nombre, cargo };
+  }).filter(Boolean);
 }
 function actualizarContador(){
   const n = nombresDesdeTexto($("#pegarLista").value).length;
@@ -1356,13 +1382,43 @@ function abrirHoja(){ $("#capaSesion").classList.add("ver"); $("#bloquePin").sty
 function cerrarHoja(){ $("#capaSesion").classList.remove("ver"); }
 on("#btnRol","click", abrirHoja);
 on("#btnCambiarRol","click", abrirHoja);
+on("#btnCambiarPinEnc","click", ()=>{
+  const uPin=$("#uPin"), uNew=$("#uPinNew"), uNew2=$("#uPinNew2"), msg=$("#uPinMsg");
+  if(!uPin) return;
+  const actual=(uPin.value||"").trim(), nuevo=(uNew.value||"").trim(), rep2=(uNew2.value||"").trim();
+  const pinActual=String(state.cfg.pinEncargada||"1234");
+  if(actual!==pinActual){ msg.textContent="PIN actual incorrecto."; msg.style.display="block"; return; }
+  if(nuevo.length<4){ msg.textContent="El PIN debe tener al menos 4 dígitos."; msg.style.display="block"; return; }
+  if(nuevo!==rep2){ msg.textContent="Los PINs nuevos no coinciden."; msg.style.display="block"; return; }
+  state.cfg.pinEncargada=nuevo; msg.style.display="none";
+  uPin.value=""; uNew.value=""; uNew2.value="";
+  anotar("encargada actualizó su PIN"); guardar(); toast("PIN actualizado correctamente");
+});
 on("#cerrarHoja","click", cerrarHoja);
-on("#btnEntrarUsuario","click", ()=>{ rol = "usuario"; guardarRol(); cerrarHoja(); pintarTodo(); toast("Sesión de encargada"); });
-on("#btnMostrarPin","click", ()=>{ $("#bloquePin").style.display = "block"; $("#pinInput").focus(); });
+on("#btnEntrarUsuario","click", ()=>{
+  // siempre pedir PIN de encargada
+  $("#bloquePin").style.display = "block";
+  $("#pinError").style.display = "none";
+  $("#pinInput").value = ""; 
+  $("#pinInput").focus();
+  $("#btnValidarPin").dataset.modo = "encargada";
+});
+on("#btnMostrarPin","click", ()=>{ $("#bloquePin").style.display="block"; $("#pinInput").value=""; $("#pinError").style.display="none"; $("#pinInput").focus(); $("#btnValidarPin").dataset.modo="admin"; });
 on("#btnValidarPin","click", ()=>{
-  if ($("#pinInput").value.trim() === String(state.cfg.pin)){
-    rol = "admin"; guardarRol(); cerrarHoja(); pintarTodo(); toast("Sesión de administrador");
-  } else { $("#pinError").style.display = "block"; }
+  const modo = $("#btnValidarPin").dataset.modo || "admin";
+  const val = ($("#pinInput").value||"").trim();
+  if (modo === "encargada"){
+    if (val === String(state.cfg.pinEncargada||"1234")){
+      rol = "usuario"; guardarRol(); cerrarHoja(); pintarTodo();
+      toast("Sesión de encargada");
+      $("#btnValidarPin").dataset.modo = "admin";
+    } else { $("#pinError").style.display = "block"; }
+  } else {
+    if (val === String(state.cfg.pin)){
+      rol = "admin"; guardarRol(); cerrarHoja(); pintarTodo();
+      toast("Sesión de administrador");
+    } else { $("#pinError").style.display = "block"; }
+  }
 });
 on("#pinInput","keydown", e=>{ if (e.key === "Enter") $("#btnValidarPin").click(); });
 on("#capaSesion","click", e=>{ if (e.target.id === "capaSesion") cerrarHoja(); });
@@ -1421,7 +1477,7 @@ on("#btnAgregarLista","click", ()=>{
   const nuevos = nombresDesdeTexto($("#pegarLista").value);
   if (!nuevos.length){ toast("Pega la lista de nombres, uno por línea"); $("#pegarLista").focus(); return; }
   let n = 0;
-  nuevos.forEach(nom=>{ if (!state.equipo.some(a=>a.nombre.toLowerCase() === nom.toLowerCase())){ state.equipo.push({ id:uid(), nombre:nom }); n++; } });
+  nuevos.forEach(item=>{ if(!state.equipo.some(a=>a.nombre.toLowerCase()===item.nombre.toLowerCase())){ state.equipo.push({id:uid(),nombre:item.nombre,cargo:item.cargo||"Analista"}); n++; } });
   $("#pegarLista").value = ""; actualizarContador();
   if (n) anotar(n+" integrantes agregados al equipo");
   guardar(); pintarTodo();
@@ -1430,7 +1486,7 @@ on("#btnAgregarLista","click", ()=>{
 confirmable($("#btnReemplazarLista"), "Tocar de nuevo para reemplazar", ()=>{
   const nuevos = nombresDesdeTexto($("#pegarLista").value);
   if (!nuevos.length){ toast("Pega primero la lista de nombres"); return; }
-  state.equipo = nuevos.map(n=>({ id:uid(), nombre:n }));
+  state.equipo = nuevos.map(item=>({ id:uid(), nombre:item.nombre, cargo:item.cargo||"Analista" }));
   $("#pegarLista").value = ""; actualizarContador();
   anotar("equipo reemplazado: "+nuevos.length+" integrantes");
   guardar(); pintarTodo(); toast("Equipo reemplazado: "+nuevos.length+" integrantes");
@@ -1503,6 +1559,8 @@ on("#btnCSV","click", ()=>{
   await cargar();
   volcarConfig(); pintarTodo(); actualizarContador();
   if (backend === "firebase"){ timerSync = setInterval(sincronizar, 6000); }
+  // exponer state para depuración
+  try{ window._state = ()=>state; }catch(e){}
   if (!almacenOk){
     const av = document.createElement("div");
     av.className = "aviso error";
