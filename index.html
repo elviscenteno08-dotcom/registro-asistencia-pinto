@@ -358,6 +358,10 @@
           <div id="avisoPin"></div>
           <div class="campo"><label for="cPin">PIN de administrador</label><input type="text" id="cPin" inputmode="numeric" maxlength="8" autocomplete="off"></div>
           <button class="btn sec ancho" id="btnGuardarPin" style="margin-bottom:12px">Guardar PIN de administrador</button>
+          <hr style="border:none;border-top:1px solid var(--linea);margin:12px 0">
+          <div class="campo"><label for="cPinEnc">Resetear PIN de encargada</label><input type="text" id="cPinEnc" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="Nuevo PIN para la encargada"></div>
+          <div class="campo"><label for="cCodRec">Código de recuperación</label><input type="text" id="cCodRec" autocomplete="off" placeholder="Ej. PINTO2026"></div>
+          <button class="btn sec ancho" id="btnGuardarPinEnc">Guardar acceso de encargada</button>
           <button class="btn peligro ancho" id="btnBorrar">Borrar todos los registros</button>
         </div>
 
@@ -424,7 +428,16 @@
       <p class="sub" id="pinError" style="color:var(--rojo);margin:8px 0 0;display:none">PIN incorrecto.</p>
     </div>
     <button class="btn ancho" id="btnMostrarPin">Entrar como administrador</button>
-    <button class="enlace" id="cerrarHoja" style="width:100%;margin-top:12px;text-align:center">Cerrar</button>
+    <button class="enlace" id="btnOlvide" style="width:100%;margin-top:8px;text-align:center;color:var(--gris);font-size:13px">¿Olvidaste tu PIN? Toca aquí</button>
+    <div id="bloqueRecupera" style="display:none;margin-top:10px;border-top:1px solid var(--linea);padding-top:12px">
+      <p style="margin:0 0 10px;font-size:13px;color:var(--gris)">Pide el código de recuperación al administrador.</p>
+      <div class="campo"><label for="codigoRecInput">Código de recuperación</label><input type="text" id="codigoRecInput" autocomplete="off" placeholder="Te lo da el administrador"></div>
+      <div class="campo"><label for="pinNuevoRec">PIN nuevo</label><input type="password" id="pinNuevoRec" inputmode="numeric" maxlength="8" autocomplete="off"></div>
+      <div class="campo"><label for="pinNuevoRec2">Repetir PIN nuevo</label><input type="password" id="pinNuevoRec2" inputmode="numeric" maxlength="8" autocomplete="off"></div>
+      <p class="sub" id="msgRecupera" style="color:var(--rojo);margin:0 0 8px;display:none"></p>
+      <button class="btn sec ancho" id="btnRecuperar">Recuperar acceso</button>
+    </div>
+    <button class="enlace" id="cerrarHoja" style="width:100%;margin-top:10px;text-align:center">Cerrar</button>
   </div>
 </div>
 <div class="capa" id="capaBase">
@@ -452,7 +465,7 @@ const COMPARTIDO = true;
 const cfgDefault = {
   entidad:"Registro de Asistencia", agencia:"Agencia Pinto", corte:"08:45",
   multa1:10, multa2:20, multaFalta:0, recargo:10, saldoInicial:0,
-  cambiosUsuario:1, pin:"2026", permisoAutoriza:true
+  cambiosUsuario:1, pin:"2026", pinEncargada:"1234", codigoRecuperacion:"PINTO2026", permisoAutoriza:true
 };
 const PERMISOS = ["Permiso particular","Comisión de servicio","Capacitación","Vacaciones","Descanso médico","Otro"];
 const ESTADOS = {
@@ -1315,6 +1328,7 @@ function pintarAjustes(){
     '<div class="item"><span>Recargo si no se cobra el mismo día</span><b class="num">'+money(c.recargo)+'</b></div>' +
     '<div class="item"><span>Permiso o comisión</span><b class="num">Sin multa</b></div>' +
     '<div class="item"><span>Cambios libres por marcado</span><b class="num">'+c.cambiosUsuario+'</b></div>' +
+    '<div class="item"><span>Código de recuperación</span><b style="font-size:13px;letter-spacing:.08em">'+( c.codigoRecuperacion||"PINTO2026" )+'</b></div>' +
     (c.permisoAutoriza ? '<div class="item"><span>Los permisos que registres</span><b style="font-size:13px">Los confirma el administrador</b></div>' : '');
   $("#estadoConexion").textContent =
     backend === "claude"  ? "Guardando dentro de Claude."
@@ -1349,6 +1363,7 @@ function volcarConfig(){
   $("#cMultaFalta").value = c.multaFalta; $("#cRecargo").value = c.recargo; $("#cCambios").value = c.cambiosUsuario;
   $("#cSaldoIni").value = c.saldoInicial;
   $("#cAgencia").value = c.agencia; $("#cPin").value = c.pin;
+  try{ if($("#cCodRec")) $("#cCodRec").value=c.codigoRecuperacion||"PINTO2026"; }catch(e){}
   $("#cPermisoAut").checked = !!c.permisoAutoriza;
 }
 const CARGOS_VALIDOS = ["Analista","Practicante"];
@@ -1395,6 +1410,28 @@ on("#btnCambiarPinEnc","click", ()=>{
   anotar("encargada actualizó su PIN"); guardar(); toast("PIN actualizado correctamente");
 });
 on("#cerrarHoja","click", cerrarHoja);
+on("#btnOlvide","click", ()=>{
+  const b=$("#bloqueRecupera");
+  b.style.display = b.style.display==="none" ? "block" : "none";
+  if(b.style.display==="block" && $("#codigoRecInput")) $("#codigoRecInput").focus();
+});
+on("#btnRecuperar","click", ()=>{
+  const cod=($("#codigoRecInput").value||"").trim();
+  const nvo=($("#pinNuevoRec").value||"").trim();
+  const nvo2=($("#pinNuevoRec2").value||"").trim();
+  const msg=$("#msgRecupera");
+  if(cod!==String(state.cfg.codigoRecuperacion||"PINTO2026")){
+    msg.textContent="Código incorrecto. Pídelo al administrador."; msg.style.display="block"; return;
+  }
+  if(nvo.length<4){ msg.textContent="El PIN debe tener al menos 4 dígitos."; msg.style.display="block"; return; }
+  if(nvo!==nvo2){ msg.textContent="Los PINs nuevos no coinciden."; msg.style.display="block"; return; }
+  state.cfg.pinEncargada=nvo; msg.style.display="none";
+  anotar("encargada recuperó acceso con código maestro");
+  guardar();
+  ["#codigoRecInput","#pinNuevoRec","#pinNuevoRec2"].forEach(id=>{ try{$(id).value="";}catch(e){} });
+  if($("#bloqueRecupera")) $("#bloqueRecupera").style.display="none";
+  rol="usuario"; guardarRol(); cerrarHoja(); pintarTodo(); toast("Acceso recuperado. Bienvenida.");
+});
 on("#btnEntrarUsuario","click", ()=>{
   // siempre pedir PIN de encargada
   $("#bloquePin").style.display = "block";
@@ -1465,6 +1502,17 @@ on("#btnSaldoIni","click", ()=>{
   state.cfg.saldoInicial = v;
   anotar("saldo inicial de la caja: "+money(antes)+" → "+money(v));
   guardar(); pintarTodo(); toast("Saldo inicial guardado");
+});
+on("#btnGuardarPinEnc","click", ()=>{
+  const pinEnc=($("#cPinEnc").value||"").trim();
+  const codRec=($("#cCodRec").value||"").trim();
+  if(pinEnc && pinEnc.length<4){ toast("El PIN de encargada debe tener al menos 4 dígitos"); return; }
+  if(codRec && codRec.length<4){ toast("El código debe tener al menos 4 caracteres"); return; }
+  if(pinEnc){ state.cfg.pinEncargada=pinEnc; anotar("admin reseteó PIN de encargada"); }
+  if(codRec){ state.cfg.codigoRecuperacion=codRec; anotar("admin actualizó código de recuperación"); }
+  if(!pinEnc&&!codRec){ toast("Escribe al menos un valor para guardar"); return; }
+  if($("#cPinEnc")) $("#cPinEnc").value="";
+  guardar(); toast("Acceso de encargada actualizado");
 });
 on("#btnGuardarPin","click", ()=>{
   const p = $("#cPin").value.trim();
